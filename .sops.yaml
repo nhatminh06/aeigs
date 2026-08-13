@@ -1,0 +1,6 @@
+creation_rules:
+  # Only files named secret.enc.yaml are SOPS-encrypted; this makes it
+  # unambiguous at a glance which manifests hold encrypted values.
+  - path_regex: (^|/)secret\.enc\.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1gfycq3cyvq29hwkluywkhyc6rpt9y257u9ltltea769khtkysawslec0vw

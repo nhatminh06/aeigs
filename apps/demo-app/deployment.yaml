@@ -20,6 +20,9 @@ spec:
           ports:
             - name: http
               containerPort: 9898
+          envFrom:
+            - secretRef:
+                name: podinfo-ui
           securityContext:
             # The image's Dockerfile sets USER app (non-numeric), which
             # the kubelet can't verify against runAsNonRoot on its own —

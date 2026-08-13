@@ -7,6 +7,10 @@ spec:
   interval: 1m
   path: ./apps/demo-app
   prune: true
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
   sourceRef:
     kind: GitRepository
     name: flux-system
