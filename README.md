@@ -15,13 +15,13 @@ Implemented:
 - local kind cluster (create/delete via scripts/cluster-up.sh, cluster-down.sh)
 - Flux reconciliation on dev-kind, bootstrapped against github.com/nhatminh06/aeigs
 - first GitOps-managed application (apps/demo-app: podinfo)
+- SOPS + age secrets, decrypted in-cluster by Flux
 
 In progress:
 - (nothing currently)
 
 Planned:
 - HelmRelease conventions
-- SOPS + age secrets
 - Prometheus / Grafana
 - Kyverno admission policies
 - security-lab attack scenarios
@@ -38,6 +38,7 @@ Planned:
 - `kind`
 - `kubectl`
 - `flux` CLI
+- `sops` and `age` (secrets)
 
 ## Architecture (current stage)
 
@@ -88,6 +89,26 @@ pod) and drift correction (manual `kubectl scale` reverted by Flux within
 about a minute, matching the 1m reconcile interval) have been verified
 against the real cluster. See `docs/decisions/` for why Flux and kind were
 chosen.
+
+Secrets are encrypted with SOPS + age (see
+`docs/decisions/0003-use-sops-age-for-secrets.md`). To bring up decryption
+on a cluster:
+
+```
+age-keygen -o ~/.config/sops/age/keys.txt   # once, keep the output safe — never commit it
+kubectl -n flux-system create secret generic sops-age \
+  --from-file=age.agekey=~/.config/sops/age/keys.txt
+```
+
+The `apps` Kustomization (`clusters/dev-kind/apps.yaml`) references this
+secret via `spec.decryption`. This is a manual, non-GitOps step by
+design: the key that unlocks encrypted secrets can't itself be managed by
+the system it unlocks. To encrypt a new secret, name it `secret.enc.yaml`
+(matches `.sops.yaml`) and run `sops --encrypt --in-place <file>`; the
+`age` public key encoded in `.sops.yaml` is safe to commit, the private
+key at `~/.config/sops/age/keys.txt` is not — export
+`SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt` so `sops` finds it on
+macOS.
 
 Every security/observability layer described in `CLAUDE.md` beyond this
 is planned but not yet present in this repository. Nothing above this
