@@ -5,11 +5,11 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m
-  # No GitHub remote exists yet for this repo. `git daemon` on the
-  # developer host serves it read-only on the docker bridge; the kind
-  # node reaches the host via host.docker.internal. Replace with a real
-  # remote (ssh/https) and flux bootstrap once one exists.
-  url: git://host.docker.internal/aegis
+  # No GitHub remote exists yet for this repo. `git http-backend`
+  # (CGI, via Python's http.server) serves it read-only on the
+  # developer host; the kind node reaches it via host.docker.internal.
+  # Replace with a real remote and `flux bootstrap` once one exists.
+  url: http://host.docker.internal:8099/cgi-bin/git-http-backend/aegis
   ref:
     branch: main
 ---
