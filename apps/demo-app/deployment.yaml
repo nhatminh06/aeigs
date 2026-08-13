@@ -13,6 +13,7 @@ spec:
       labels:
         app: podinfo
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: podinfo
           image: ghcr.io/stefanprodan/podinfo:6.14.1
@@ -20,7 +21,11 @@ spec:
             - name: http
               containerPort: 9898
           securityContext:
+            # The image's Dockerfile sets USER app (non-numeric), which
+            # the kubelet can't verify against runAsNonRoot on its own —
+            # the numeric uid is required explicitly (id -u app == 100).
             runAsNonRoot: true
+            runAsUser: 100
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
