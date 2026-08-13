@@ -41,21 +41,14 @@ Planned:
 
 ## Architecture (current stage)
 
-```
-Laptop
-  |
-Docker
-  |
-kind (cluster "aegis-dev")
-  |
-FluxCD (reconciling clusters/dev-kind from this repo)
-  |
-apps/demo-app (podinfo Deployment + Service, namespace demo-app)
-  |
-observability/kube-prometheus-stack (Prometheus + Grafana, namespace observability)
-  |
-security/kyverno + security/policies (admission control, namespace kyverno)
-```
+![Aegis architecture: source & bootstrap, FluxCD GitOps control plane, Kubernetes API & workloads, admission control, and the local dev/drift-test loop](docs/architecture/architecture.png)
+
+Laptop → Docker → `kind` (cluster `aegis-dev`) → FluxCD (reconciling
+`clusters/dev-kind` from this repo) → `apps/demo-app` (podinfo, namespace
+`demo-app`) and `observability/kube-prometheus-stack` (Prometheus +
+Grafana, namespace `observability`), with `security/kyverno` +
+`security/policies` enforcing admission control on everything Flux
+applies.
 
 Create the cluster with `scripts/cluster-up.sh` and remove it with
 `scripts/cluster-down.sh` (destructive — deletes all workloads on it,
