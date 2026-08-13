@@ -55,9 +55,12 @@ must match reality — see "Status honesty" below.
 - Plain Kustomize is used until an application genuinely needs Helm's
   templating (parameterized upstream charts). Don't wrap Helm in
   unnecessary layers.
-- Secrets are never committed in plaintext. Once secrets are needed, SOPS +
-  age is the default mechanism; alternatives are evaluated only if SOPS
-  proves insufficient.
+- Secrets are never committed in plaintext. SOPS + age is the mechanism;
+  alternatives are evaluated only if SOPS proves insufficient. An
+  encrypted Secret manifest is always named `secret.enc.yaml` so it's
+  identifiable at a glance and matches `.sops.yaml`'s `path_regex`. Age
+  recipient public keys live in `.sops.yaml` (safe to commit); private
+  keys never do — see `docs/decisions/0003-use-sops-age-for-secrets.md`.
 - Documentation lives under `docs/`: `decisions/` for ADRs (only for
   decisions with real tradeoffs — not "we made a folder"), `runbooks/` for
   operational procedures, others as they become necessary.
