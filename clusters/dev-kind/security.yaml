@@ -1,0 +1,33 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: kyverno
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./security/kyverno
+  prune: true
+  wait: true
+  timeout: 5m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: kyverno-policies
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./security/policies
+  prune: true
+  wait: true
+  timeout: 2m
+  # ClusterPolicy is a CRD Kyverno installs; the policies can't apply
+  # until the controller (and its CRDs) are actually up.
+  dependsOn:
+    - name: kyverno
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
