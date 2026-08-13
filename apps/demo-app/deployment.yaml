@@ -14,6 +14,10 @@ spec:
         app: podinfo
     spec:
       automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: podinfo
           image: ghcr.io/stefanprodan/podinfo:6.14.1
@@ -30,6 +34,7 @@ spec:
             runAsNonRoot: true
             runAsUser: 100
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           resources:
@@ -37,4 +42,5 @@ spec:
               cpu: 10m
               memory: 32Mi
             limits:
+              cpu: 100m
               memory: 64Mi
