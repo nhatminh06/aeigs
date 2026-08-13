@@ -18,6 +18,8 @@ kind: Kustomization
 metadata:
   name: flux-system
   namespace: flux-system
+  labels:
+    aegis.dev/reconcile-test: "pr3"
 spec:
   interval: 1m
   path: ./clusters/dev-kind
