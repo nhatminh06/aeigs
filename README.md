@@ -18,12 +18,12 @@ Implemented:
 - SOPS + age secrets, decrypted in-cluster by Flux
 - Prometheus + Grafana (kube-prometheus-stack via HelmRelease)
 - Kyverno admission policies (deny privileged containers, deny latest tags)
+- security-lab: 3 documented attack scenarios (security-lab/)
 
 In progress:
 - (nothing currently)
 
 Planned:
-- security-lab attack scenarios
 - supply-chain baseline (scanning, SBOM, signing)
 - Authentik identity
 - NetworkPolicy / default-deny
@@ -136,6 +136,14 @@ privileged containers, no `latest`/missing image tags — see
 the real cluster with a passing and a failing manifest each
 (`security/policies/tests/`) — actual admission rejection was observed,
 not assumed from the policy YAML alone.
+
+`security-lab/` runs deliberate attack scenarios against controls that
+already exist — privileged containers, mutable/missing image tags, and
+GitOps drift — each documented with the actual command run and the real
+output observed, not a hypothetical. See `security-lab/README.md` for the
+list and what's deliberately not a lab yet (RBAC escalation, leaked
+secrets, unsigned images — none of those have a backing control in this
+repo yet).
 
 Every security layer described in `CLAUDE.md` beyond this is planned but
 not yet present in this repository. Nothing above this stage should be

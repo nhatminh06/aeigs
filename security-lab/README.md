@@ -1,0 +1,25 @@
+# Security lab
+
+Deliberate attack scenarios run against the real `dev-kind` cluster, each
+proving a specific control actually stops the thing it's supposed to
+stop — not just that the control's YAML exists. A lab is only added once
+the control it tests is already implemented (see `CLAUDE.md`); labs don't
+come before the mechanism they exercise.
+
+Each lab follows the same structure: objective, threat, vulnerable
+example, expected defense, test procedure, observed result, remediation.
+
+## Labs
+
+- [`privileged-container/`](privileged-container/) — Kyverno
+  `disallow-privileged-containers`
+- [`latest-image-tag/`](latest-image-tag/) — Kyverno `disallow-latest-tag`
+- [`flux-drift/`](flux-drift/) — Flux GitOps drift correction
+
+## Planned (not yet backed by a control, so not labs yet)
+
+- `rbac-escalation/` — needs least-privilege RBAC conventions first
+- `leaked-secret/` — needs a secret-scanning control (Gitleaks in CI) first
+- `unsigned-image/` — needs image signing/verification (Cosign + Kyverno
+  `verifyImages`) first
+- `service-account-abuse/` — needs per-workload RBAC review first
