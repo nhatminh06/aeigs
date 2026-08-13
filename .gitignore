@@ -1,0 +1,19 @@
+# OS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# kind / kubectl local state
+kubeconfig
+*.kubeconfig
+
+# age / SOPS key material — never commit private keys
+*.agekey
+age.key
+
+# Decrypted secrets that should only ever exist locally
+*.decrypted.yaml
+*.decrypted.yml
