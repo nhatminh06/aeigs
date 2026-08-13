@@ -16,13 +16,12 @@ Implemented:
 - Flux reconciliation on dev-kind, bootstrapped against github.com/nhatminh06/aeigs
 - first GitOps-managed application (apps/demo-app: podinfo)
 - SOPS + age secrets, decrypted in-cluster by Flux
+- Prometheus + Grafana (kube-prometheus-stack via HelmRelease)
 
 In progress:
 - (nothing currently)
 
 Planned:
-- HelmRelease conventions
-- Prometheus / Grafana
 - Kyverno admission policies
 - security-lab attack scenarios
 - supply-chain baseline (scanning, SBOM, signing)
@@ -52,6 +51,8 @@ kind (cluster "aegis-dev")
 FluxCD (reconciling clusters/dev-kind from this repo)
   |
 apps/demo-app (podinfo Deployment + Service, namespace demo-app)
+  |
+observability/kube-prometheus-stack (Prometheus + Grafana, namespace observability)
 ```
 
 Create the cluster with `scripts/cluster-up.sh` and remove it with
@@ -110,10 +111,25 @@ key at `~/.config/sops/age/keys.txt` is not — export
 `SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt` so `sops` finds it on
 macOS.
 
-Every security/observability layer described in `CLAUDE.md` beyond this
-is planned but not yet present in this repository. Nothing above this
-stage should be assumed to work until the Status section says it's
-implemented.
+`kube-prometheus-stack` (Prometheus, Grafana, kube-state-metrics,
+node-exporter, the Prometheus Operator; Alertmanager disabled) runs via a
+Flux `HelmRelease` — see
+`docs/decisions/0004-use-helm-for-observability.md` for why Helm was used
+here specifically, and `clusters/dev-kind/observability.yaml`. Grafana's
+admin credentials are a SOPS-encrypted `Secret`
+(`observability/kube-prometheus-stack/secret.enc.yaml`), referenced via
+`grafana.admin.existingSecret` rather than a plaintext Helm value.
+Prometheus is confirmed scraping real targets (kubelet, coredns,
+kube-state-metrics, node-exporter); some kind-specific control-plane
+targets (etcd, scheduler, controller-manager) show as down, since kind
+doesn't expose those the way a kubeadm cluster does — not yet
+investigated. Grafana login and Grafana→Prometheus querying have both
+been verified against the real decrypted credentials, not just assumed
+from the chart installing.
+
+Every security layer described in `CLAUDE.md` beyond this is planned but
+not yet present in this repository. Nothing above this stage should be
+assumed to work until the Status section says it's implemented.
 
 ## Roadmap
 
