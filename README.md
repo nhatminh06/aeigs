@@ -17,12 +17,12 @@ Implemented:
 - first GitOps-managed application (apps/demo-app: podinfo)
 - SOPS + age secrets, decrypted in-cluster by Flux
 - Prometheus + Grafana (kube-prometheus-stack via HelmRelease)
+- Kyverno admission policies (deny privileged containers, deny latest tags)
 
 In progress:
 - (nothing currently)
 
 Planned:
-- Kyverno admission policies
 - security-lab attack scenarios
 - supply-chain baseline (scanning, SBOM, signing)
 - Authentik identity
@@ -53,6 +53,8 @@ FluxCD (reconciling clusters/dev-kind from this repo)
 apps/demo-app (podinfo Deployment + Service, namespace demo-app)
   |
 observability/kube-prometheus-stack (Prometheus + Grafana, namespace observability)
+  |
+security/kyverno + security/policies (admission control, namespace kyverno)
 ```
 
 Create the cluster with `scripts/cluster-up.sh` and remove it with
@@ -126,6 +128,14 @@ doesn't expose those the way a kubeadm cluster does — not yet
 investigated. Grafana login and Grafana→Prometheus querying have both
 been verified against the real decrypted credentials, not just assumed
 from the chart installing.
+
+Kyverno enforces two admission policies (`security/policies/`): no
+privileged containers, no `latest`/missing image tags — see
+`docs/decisions/0005-use-kyverno-for-admission-policy.md`. Both are in
+`Enforce` mode (block, not just report) and both have been tested against
+the real cluster with a passing and a failing manifest each
+(`security/policies/tests/`) — actual admission rejection was observed,
+not assumed from the policy YAML alone.
 
 Every security layer described in `CLAUDE.md` beyond this is planned but
 not yet present in this repository. Nothing above this stage should be

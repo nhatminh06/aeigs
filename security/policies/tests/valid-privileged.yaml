@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-nonprivileged
+  namespace: default
+spec:
+  containers:
+    - name: test
+      image: nginx:1.27.3
+      securityContext:
+        privileged: false
