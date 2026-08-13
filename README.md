@@ -57,20 +57,27 @@ no confirmation prompt). Both scripts are idempotent: re-running
 `cluster-up.sh` on an existing cluster or `cluster-down.sh` with no
 cluster present is a no-op rather than an error.
 
-This repository has no GitHub (or other) remote yet, so Flux's
-`GitRepository` can't clone it directly. `scripts/git-bridge-up.sh` starts
-a local `git http-backend` bridge (Python's CGI `http.server`, bound to
-`127.0.0.1`) that serves this repo to the kind node over
-`http://host.docker.internal:8099`; `scripts/git-bridge-down.sh` stops it.
-This is a local-development-only workaround, not a long-term design —
-once a real remote exists, `clusters/dev-kind/flux-system/gotk-sync.yaml`
-should point at it and the repo should switch to `flux bootstrap`.
+This repository's remote is `github.com/nhatminh06/aeigs`. Flux was
+bootstrapped onto `aegis-dev` with:
 
-To bring the platform up from a stopped state: `cluster-up.sh`, then
-`git-bridge-up.sh`, then apply
-`clusters/dev-kind/flux-system/gotk-components.yaml` and `gotk-sync.yaml`
-once (Flux self-manages after that — further changes to
-`clusters/dev-kind/` just need a commit).
+```
+flux bootstrap github \
+  --owner=nhatminh06 --repository=aeigs --branch=main \
+  --path=clusters/dev-kind --personal
+```
+
+This generated `clusters/dev-kind/flux-system/gotk-components.yaml` and
+`gotk-sync.yaml` (an SSH-based `GitRepository`, using a deploy key Flux
+registered on the repo, plus a self-managing `Kustomization`), committed
+them, and applied them to the cluster. `gotk-sync.yaml`'s `Kustomization`
+interval was shortened from Flux's 10m default to 1m afterward, so dev
+config changes converge quickly — see the comment in that file.
+
+To bring the platform up from a stopped cluster: `cluster-up.sh`, then
+re-run the `flux bootstrap github` command above (idempotent — it detects
+the existing deploy key and sync manifests and just reconciles). Ongoing
+changes to `clusters/dev-kind/` just need a commit and push; no manual
+`kubectl apply` is needed after the first bootstrap.
 
 GitOps-managed applications and every security/observability layer
 described in `CLAUDE.md` are planned but not yet present in this
