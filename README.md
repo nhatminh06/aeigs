@@ -19,12 +19,13 @@ Implemented:
 - Prometheus + Grafana (kube-prometheus-stack via HelmRelease)
 - Kyverno admission policies (deny privileged containers, deny latest tags)
 - security-lab: 3 documented attack scenarios (security-lab/)
+- repo-level scanning in CI: Gitleaks (secrets) + Trivy config (manifest misconfigurations)
 
 In progress:
 - (nothing currently)
 
 Planned:
-- supply-chain baseline (scanning, SBOM, signing)
+- container build/scan/SBOM/signing (needs a real image-building app repo first)
 - Authentik identity
 - NetworkPolicy / default-deny
 - persistent home cluster
@@ -137,6 +138,15 @@ output observed, not a hypothetical. See `security-lab/README.md` for the
 list and what's deliberately not a lab yet (RBAC escalation, leaked
 secrets, unsigned images — none of those have a backing control in this
 repo yet).
+
+`.github/workflows/repo-security.yml` runs Gitleaks and Trivy config on
+every push/PR — see
+`docs/decisions/0006-repo-level-scanning.md` for why this is scoped to
+repo-level scanning rather than the full source→build→scan→sign pipeline
+(nothing in this repo builds a container image yet). `trivy.yaml` is the
+single source of truth for scan settings, used identically by CI and
+locally (`trivy config --config trivy.yaml .`). CI gates on
+`HIGH`/`CRITICAL` findings.
 
 Every security layer described in `CLAUDE.md` beyond this is planned but
 not yet present in this repository. Nothing above this stage should be
