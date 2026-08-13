@@ -12,10 +12,9 @@ that govern how this repository is built.
 
 ```
 Implemented:
-- (nothing yet — repository foundation only)
+- local kind cluster (create/delete via scripts/cluster-up.sh, cluster-down.sh)
 
 In progress:
-- local kind cluster
 - Flux reconciliation on dev-kind
 
 Planned:
@@ -46,8 +45,14 @@ Laptop
   |
 Docker
   |
-kind (planned: cluster "aegis-dev")
+kind (cluster "aegis-dev")
 ```
+
+Create the cluster with `scripts/cluster-up.sh` and remove it with
+`scripts/cluster-down.sh` (destructive — deletes all workloads on it,
+no confirmation prompt). Both scripts are idempotent: re-running
+`cluster-up.sh` on an existing cluster or `cluster-down.sh` with no
+cluster present is a no-op rather than an error.
 
 Flux, GitOps-managed applications, and every security/observability layer
 described in `CLAUDE.md` are planned but not yet present in this
