@@ -13,13 +13,13 @@ that govern how this repository is built.
 ```
 Implemented:
 - local kind cluster (create/delete via scripts/cluster-up.sh, cluster-down.sh)
-- Flux reconciliation on dev-kind
+- Flux reconciliation on dev-kind, bootstrapped against github.com/nhatminh06/aeigs
+- first GitOps-managed application (apps/demo-app: podinfo)
 
 In progress:
 - (nothing currently)
 
 Planned:
-- first GitOps-managed application
 - HelmRelease conventions
 - SOPS + age secrets
 - Prometheus / Grafana
@@ -49,6 +49,8 @@ Docker
 kind (cluster "aegis-dev")
   |
 FluxCD (reconciling clusters/dev-kind from this repo)
+  |
+apps/demo-app (podinfo Deployment + Service, namespace demo-app)
 ```
 
 Create the cluster with `scripts/cluster-up.sh` and remove it with
@@ -79,10 +81,18 @@ the existing deploy key and sync manifests and just reconciles). Ongoing
 changes to `clusters/dev-kind/` just need a commit and push; no manual
 `kubectl apply` is needed after the first bootstrap.
 
-GitOps-managed applications and every security/observability layer
-described in `CLAUDE.md` are planned but not yet present in this
-repository. Nothing above this stage should be assumed to work until the
-Status section says it's implemented.
+`apps/demo-app` runs `podinfo`, wired in via
+`clusters/dev-kind/apps.yaml` (a Flux `Kustomization` pointing at
+`./apps/demo-app`). Both the deploy loop (Git commit → Flux → running
+pod) and drift correction (manual `kubectl scale` reverted by Flux within
+about a minute, matching the 1m reconcile interval) have been verified
+against the real cluster. See `docs/decisions/` for why Flux and kind were
+chosen.
+
+Every security/observability layer described in `CLAUDE.md` beyond this
+is planned but not yet present in this repository. Nothing above this
+stage should be assumed to work until the Status section says it's
+implemented.
 
 ## Roadmap
 
