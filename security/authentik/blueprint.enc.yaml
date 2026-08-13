@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: authentik-blueprints
+    namespace: authentik
+stringData:
+    grafana-oidc.yaml: ENC[AES256_GCM,data:n07Seq1/2ZSjFjdL30sjyPvcDkiKNvbdPuFHPZuKryXyZBGYOsLwNe3vL2rAdmjCyavKvvDd2miuYmLwknvyDQOgmpYtDjI4IUbovlL0SNlBE4AINv7BNkjc7sRvx0VAHgfHKzpFnZVzwhUpxxOxvGz5+K5JylAa/aQOgn4PML5OGB9rhtIS9zrhnwRxxaUwQrlgSzARckqPTK+mO8WHHmKMLYAGtl1p0M3Zu4BhljPhC8A+PUnOmc75gItu0VE9MRRKi7ShZbW/R9xo3oCS0mz80fsZ35Mdfdb3JXqLUIVSmsU7zgfLceFsHvLODlO9P+U3fnAGe2gMjnlxHQweZddpmx2ntlRFIHXkriDMM/XqAj7s+rabMOfN4Ztupw7Dlp7FwvtbVhvwDIr9D+l60wjZ47kcIKU5ka3D5nHKhlL1Bhic7UNWPR129d5GVpvUjm+Z6dmeuUvSJuOkkuWBu7qL4WhArajEgNmfJnjAGQTdEfRVf5dc1c1lSBCHyXztvMDgCQlcUX+5aBJd6tNkJwjI2VQoCsxlC4V6+XjItSRhqFDmjzBBqOOeECkes4cURLu99prTetL8AMV//18cJpIUS5PaMjucbKKAjiOFCjO8ZtpVWZGnkAR7YN6Gn8u+JhOpatBL9xzdrFBTq/EQ7wuLO/xP8ZQ8xoaG5MJTzTctsF0MEpNCPuWUADOePhPIHYEFD9KwN7fFeSimd0jM2X+mYPIqgvHTd458+DN3XjE3y4rg8fHvb0aSVsngFrG/xREQ3Q7qNGpIr2mfqXj1ED033EpNU58+LByMgo+/xOqnzKFfMvtS1KHHMBN3zASzV1FJScRx3pdZ7Z6LZjT3II0s7iZ/pqrikjng+iQH3nYOz+MkmEaDpJn4kLiB42JjfN1W8aen5/bWRzi6Ag/ntEmR+vw60UNKNKW5PIC6H8rN83l/f70BDG74EwUrqW1aQFEl6YmV34Amb4fMqDN6KVhRygvDpOaIx1uEBku+sDCkuRSZxWoakX4ifLcjlqRlEzFcLT3t0O4XQ0biY4Vz30oFhjf1gakRXTpzMdMxlAOdf1cx3wZ8lGxHz8knsmuF4VpKwTF85dMCy0TyKFmIqGqQB6EXoVCrcoqA0Gg/vZ++wpUGsQ9e8a60n9GuzfQQ1Cghuu266Vvn0L33IeVNCscEmd59eQdj8aDIpQSQ/66Rt1m5wIf31E/Tkb1CGPRCy8wMI38sH13j8KIYLe1aB/WqUnw83IfPcsiVOuQIY24DwX9d8aNfz9Z3k03Aftn/pl/JrpaCVqKkx4w5FJIf9qifoU+nGvOt2sgdenWiSOtCWHSFYn05vd7nUJs=,iv:QnJQ5vWyd+IhQjss6owOUYwFxXxxQ4XqxqA3p/EaWZ8=,tag:YKHfvqC/Gamb3dRk5BVYSw==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB4YzlXWjlwckxwTVpYOFFw
+            T0NKbVM5dUVsdWpkcmNjemMySVJQRlVrUXpzCnVvSFgwMkVCTjVKQmw5SDU5Rjc2
+            RlFYSlRVUXFXNWp0OVpBS2oxL3ZXL2MKLS0tIFZXbnUvOWNmZ2l5aTVkdmRscWwr
+            Tmc5aXJibkJtWEpNc1FxVWppWElGa28Ko3Jx6WthhlzeWVu/A8GdN+qpn9dVFdud
+            2wn6DgPsd377a7wkS3ry30D4siPZv+sBMqrXqS+2ahUNOyB+hz0YBw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1gfycq3cyvq29hwkluywkhyc6rpt9y257u9ltltea769khtkysawslec0vw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-13T19:32:24Z"
+    mac: ENC[AES256_GCM,data:ezgdfHEy4hIxxZM97S4OGrd9btZvRrO4XzgnXpnDeCsZy65G8X0JhvSAJw7SqLQ26LRT4JxHDbLck1poUJevpr4CPEGwtL73BkIawiJn4E7v78SccrxW4SyTEMsCWbd9nvBwPVVU82aNH7SeYH3/kw6+s48JLfPfhn4UcsiMdfw=,iv:H+CgWBCOqD99rybCfcAaQ2cIPz7m1yaYkwsC0E1KrIw=,tag:X21woCLhOyn+kotnJ39/iQ==,type:str]
+    version: 3.13.3

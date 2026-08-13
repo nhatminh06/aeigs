@@ -1,6 +1,10 @@
 creation_rules:
-  # Only files named secret.enc.yaml are SOPS-encrypted; this makes it
-  # unambiguous at a glance which manifests hold encrypted values.
-  - path_regex: (^|/)secret\.enc\.yaml$
+  # Only files ending in *.enc.yaml are SOPS-encrypted; this makes it
+  # unambiguous at a glance which manifests hold encrypted values. The
+  # `secret.enc.yaml` default name still applies when a directory needs
+  # only one; a directory needing more than one (e.g. two unrelated
+  # secrets for the same app) uses a descriptive prefix instead, e.g.
+  # `grafana-oidc.enc.yaml`.
+  - path_regex: (^|/)[a-z0-9-]+\.enc\.yaml$
     encrypted_regex: ^(data|stringData)$
     age: age1gfycq3cyvq29hwkluywkhyc6rpt9y257u9ltltea769khtkysawslec0vw

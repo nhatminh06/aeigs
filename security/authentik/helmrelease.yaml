@@ -1,0 +1,55 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: authentik
+      version: "2026.5.6"
+      sourceRef:
+        kind: HelmRepository
+        name: authentik
+        namespace: authentik
+  values:
+    global:
+      env:
+        - name: AUTHENTIK_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: authentik-config
+              key: secret-key
+        - name: AUTHENTIK_POSTGRESQL__PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: authentik-config
+              key: postgresql-password
+        - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: authentik-config
+              key: bootstrap-password
+        - name: AUTHENTIK_BOOTSTRAP_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: authentik-config
+              key: bootstrap-token
+        - name: AUTHENTIK_BOOTSTRAP_EMAIL
+          value: akadmin@aegis.local
+    # Self-contained Postgres for this dev cluster — not a persistent
+    # datastore. If Authentik data needs to survive cluster rebuilds,
+    # that's a disaster-recovery-phase problem, not solved here.
+    postgresql:
+      enabled: true
+      auth:
+        existingSecret: authentik-config
+        secretKeys:
+          userPasswordKey: postgresql-password
+      primary:
+        persistence:
+          enabled: false
+    blueprints:
+      secrets:
+        - authentik-blueprints

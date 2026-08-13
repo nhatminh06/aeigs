@@ -25,6 +25,32 @@ spec:
         passwordKey: admin-password
       persistence:
         enabled: false
+      envValueFrom:
+        GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+          secretKeyRef:
+            name: grafana-oidc
+            key: client-secret
+      "grafana.ini":
+        server:
+          # Browser-facing address used while testing via
+          # `kubectl port-forward`; this and the Authentik provider's
+          # registered redirect URI must match exactly.
+          root_url: http://localhost:3000/
+        auth.generic_oauth:
+          enabled: true
+          name: Authentik
+          client_id: a4aabfd0c61e2e6eba4fdaeed174c158b2b6e9f6
+          scopes: "openid profile email"
+          # Browser-facing: only reachable while authentik-server is
+          # port-forwarded to localhost:9000.
+          auth_url: http://localhost:9000/application/o/authorize/
+          # Backend-only calls made by Grafana's server, not the
+          # browser — cluster-internal Service DNS works here.
+          token_url: http://authentik-server.authentik.svc.cluster.local/application/o/token/
+          api_url: http://authentik-server.authentik.svc.cluster.local/application/o/userinfo/
+          # Local admin/password login stays available too — dev
+          # cluster, don't risk locking ourselves out over OAuth.
+          disable_login_form: false
     prometheus:
       prometheusSpec:
         # kind is disposable; short retention avoids accumulating data
