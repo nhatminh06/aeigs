@@ -43,3 +43,14 @@ Reasons specific to this project:
   is a single dev key for the `dev-kind` cluster only. External Secrets
   Operator or Vault are re-evaluated later if multi-cluster or
   multi-operator key distribution becomes a real requirement.
+- **Observed, not just theoretical**: a `Deployment` consuming a `Secret`
+  via `envFrom` is not restarted automatically when only the `Secret`'s
+  data changes (a general Kubernetes behavior, unrelated to SOPS). When
+  the demo-app Secret and its consuming Deployment were introduced in the
+  same commit, the pod picked up an env var before Flux's decrypted
+  value had finished settling, and kept running with a stale value until
+  `kubectl rollout restart` was run manually. A Secret-consuming workload
+  needs a way to pick up secret changes on its own — e.g. a checksum
+  annotation on the pod template derived from the secret content — which
+  isn't implemented yet. Until it is, changing a secret's value requires
+  a manual rollout restart of anything consuming it.
