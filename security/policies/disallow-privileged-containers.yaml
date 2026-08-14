@@ -12,6 +12,17 @@ spec:
           - resources:
               kinds:
                 - Pod
+      # kube-proxy in kube-system legitimately runs privileged+hostNetwork.
+      # Without this exclusion, the next time it (or anything else in
+      # these namespaces) gets recreated — a node restart, a DaemonSet
+      # rollout — Kyverno blocks it and breaks core cluster networking.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-node-lease
+                - kube-public
       validate:
         message: >-
           Privileged containers are not allowed. Set
