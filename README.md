@@ -20,13 +20,13 @@ Implemented:
 - Kyverno admission policies (deny privileged containers, deny latest tags)
 - security-lab: 3 documented attack scenarios (security-lab/)
 - repo-level scanning in CI: Gitleaks (secrets) + Trivy config (manifest misconfigurations)
+- Authentik identity, Grafana logs in via OIDC through it
 
 In progress:
 - (nothing currently)
 
 Planned:
 - container build/scan/SBOM/signing (needs a real image-building app repo first)
-- Authentik identity
 - NetworkPolicy / default-deny
 - persistent home cluster
 - backup and disaster-recovery drills
@@ -61,23 +61,31 @@ This repository's remote is `github.com/nhatminh06/aeigs`. Flux was
 bootstrapped onto `aegis-dev` with:
 
 ```
-flux bootstrap github \
+GITHUB_TOKEN=$(gh auth token) flux bootstrap github \
   --owner=nhatminh06 --repository=aeigs --branch=main \
-  --path=clusters/dev-kind --personal
+  --path=clusters/dev-kind --personal --token-auth
 ```
 
-This generated `clusters/dev-kind/flux-system/gotk-components.yaml` and
-`gotk-sync.yaml` (an SSH-based `GitRepository`, using a deploy key Flux
-registered on the repo, plus a self-managing `Kustomization`), committed
-them, and applied them to the cluster. `gotk-sync.yaml`'s `Kustomization`
-interval was shortened from Flux's 10m default to 1m afterward, so dev
-config changes converge quickly — see the comment in that file.
+This uses HTTPS with a GitHub token rather than the SSH deploy key Flux
+defaults to — this network blocks the SSH protocol entirely (both port
+22 and `ssh.github.com:443` time out; plain HTTPS works fine), so the
+default SSH bootstrap doesn't work here. Don't assume SSH works on every
+network when bootstrapping elsewhere; test it first, and use
+`--token-auth` if not. This generated
+`clusters/dev-kind/flux-system/gotk-components.yaml` and `gotk-sync.yaml`
+(an HTTPS `GitRepository` using a token secret, plus a self-managing
+`Kustomization`), committed them, and applied them to the cluster.
+`gotk-sync.yaml`'s `Kustomization` interval was shortened from Flux's 10m
+default to 1m afterward, so dev config changes converge quickly — see the
+comment in that file (re-running `flux bootstrap` regenerates this file
+and resets the interval; re-apply the shortened interval if that
+happens).
 
 To bring the platform up from a stopped cluster: `cluster-up.sh`, then
-re-run the `flux bootstrap github` command above (idempotent — it detects
-the existing deploy key and sync manifests and just reconciles). Ongoing
-changes to `clusters/dev-kind/` just need a commit and push; no manual
-`kubectl apply` is needed after the first bootstrap.
+re-run the `flux bootstrap github --token-auth` command above (idempotent
+— it detects the existing token secret and sync manifests and just
+reconciles). Ongoing changes to `clusters/dev-kind/` just need a commit
+and push; no manual `kubectl apply` is needed after the first bootstrap.
 
 `apps/demo-app` runs `podinfo`, wired in via
 `clusters/dev-kind/apps.yaml` (a Flux `Kustomization` pointing at
@@ -147,6 +155,22 @@ repo-level scanning rather than the full source→build→scan→sign pipeline
 single source of truth for scan settings, used identically by CI and
 locally (`trivy config --config trivy.yaml .`). CI gates on
 `HIGH`/`CRITICAL` findings.
+
+Authentik (`security/authentik/`, `HelmRelease`, chart pinned `2026.5.6`,
+in-cluster non-persistent Postgres) provides identity, with Grafana's
+login wired to it via OIDC — see
+`docs/decisions/0007-use-authentik-for-identity.md`, including three real
+bugs hit and fixed while setting it up (an empty `grant_types`, missing
+scope property mappings, and the SSH-blocked-network issue above). The
+Authentik→Grafana OIDC provider/application are defined declaratively via
+an Authentik **blueprint**, mounted from a SOPS-encrypted `Secret` — not
+configured by hand through the Authentik UI. Verified with a real login:
+Grafana provisioned a new user (`akadmin@aegis.local`,
+`authLabels: ["Generic OAuth"]`) distinct from the local `admin` account,
+confirmed via the Grafana API, not just observed once in a browser.
+Reaching both services requires `kubectl port-forward` on this dev
+cluster (`authentik-server` to `9000`, `kube-prometheus-stack-grafana` to
+`3000`) — no ingress yet.
 
 Every security layer described in `CLAUDE.md` beyond this is planned but
 not yet present in this repository. Nothing above this stage should be
