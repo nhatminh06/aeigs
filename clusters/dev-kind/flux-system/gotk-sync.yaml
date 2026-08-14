@@ -11,7 +11,7 @@ spec:
     branch: main
   secretRef:
     name: flux-system
-  url: ssh://git@github.com/nhatminh06/aeigs
+  url: https://github.com/nhatminh06/aeigs.git
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -19,10 +19,7 @@ metadata:
   name: flux-system
   namespace: flux-system
 spec:
-  # flux bootstrap hardcodes 10m here; shortened for dev so config
-  # experiments converge quickly. `flux bootstrap` re-runs would reset
-  # this back to 10m0s.
-  interval: 1m0s
+  interval: 10m0s
   path: ./clusters/dev-kind
   prune: true
   sourceRef:
