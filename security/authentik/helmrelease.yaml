@@ -68,11 +68,15 @@ spec:
     worker:
       resources:
         requests:
-          cpu: 50m
-          memory: 128Mi
-        limits:
-          cpu: 250m
+          cpu: 100m
           memory: 256Mi
+        # 256Mi OOMKilled the worker in practice (observed on dev-kind
+        # after this HelmRelease first went live) — it's the same Django
+        # app as the server process, running background tasks/blueprint
+        # application, not a lighter process. Matched to server's limit.
+        limits:
+          cpu: 500m
+          memory: 512Mi
     blueprints:
       secrets:
         - authentik-blueprints
