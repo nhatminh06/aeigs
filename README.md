@@ -80,25 +80,40 @@ default SSH bootstrap doesn't work here. Don't assume SSH works on every
 network when bootstrapping elsewhere; test it first, and use
 `--token-auth` if not. This generated
 `clusters/dev-kind/flux-system/gotk-components.yaml` and `gotk-sync.yaml`
-(an HTTPS `GitRepository` using a token secret, plus a self-managing
-`Kustomization`), committed them, and applied them to the cluster.
-`gotk-sync.yaml`'s `Kustomization` interval was shortened from Flux's 10m
-default to 1m afterward, so dev config changes converge quickly — see the
-comment in that file (re-running `flux bootstrap` regenerates this file
-and resets the interval; re-apply the shortened interval if that
-happens).
+(an HTTPS `GitRepository` with a token-backed `secretRef`, plus a
+self-managing `Kustomization`), committed them, and applied them to the
+cluster. `gotk-sync.yaml`'s `Kustomization` interval was shortened from
+Flux's 10m default to 1m afterward, so dev config changes converge
+quickly — see the comment in that file (re-running `flux bootstrap`
+regenerates this file and resets the interval; re-apply the shortened
+interval if that happens).
+
+The bootstrap token and the runtime Git credential are two different
+concerns. `flux bootstrap` needs a token — it writes commits and creates
+the deploy setup via the GitHub API — but that same token then sits in
+the `flux-system` Secret as the credential `source-controller` uses for
+every fetch afterward, indefinitely, even though this repository is
+public and doesn't need one for reads. `gotk-sync.yaml`'s `GitRepository`
+has had that `secretRef` deliberately removed (verified live: anonymous
+HTTPS reconciliation works with it gone); see
+`docs/decisions/0009-minimize-runtime-git-credentials.md`. A bootstrap
+re-run regenerates `secretRef` — remove it again afterward, and once
+reconciled, the now-unreferenced `flux-system` Secret can be deleted:
+`kubectl -n flux-system delete secret flux-system`.
 
 To bring the platform up on a fresh or recreated cluster (`kind` has no
 "stop" — `cluster-down.sh` deletes it entirely, wiping all in-cluster
 state): `cluster-up.sh`, then re-run the `flux bootstrap github
 --token-auth` command above (idempotent — it detects the existing token
-secret and sync manifests and just reconciles). **Before that finishes
-reconciling anything that decrypts secrets**, recreate the `sops-age`
-secret too (see the Secrets section below) — `apps`, `observability`, and
-`identity` all fail to decrypt without it, since it doesn't survive a
-cluster rebuild any more than anything else does. Ongoing changes to
-`clusters/dev-kind/` just need a commit and push; no manual `kubectl
-apply` is needed after the first bootstrap.
+secret and sync manifests and just reconciles), then remove `secretRef`
+from the live `GitRepository`/re-apply this repo's version of
+`gotk-sync.yaml` and delete the Secret as described above. **Before that
+finishes reconciling anything that decrypts secrets**, recreate the
+`sops-age` secret too (see the Secrets section below) — `apps`,
+`observability`, and `identity` all fail to decrypt without it, since it
+doesn't survive a cluster rebuild any more than anything else does.
+Ongoing changes to `clusters/dev-kind/` just need a commit and push; no
+manual `kubectl apply` is needed after the first bootstrap.
 
 `apps/demo-app` runs `podinfo`, wired in via
 `clusters/dev-kind/apps.yaml` (a Flux `Kustomization` pointing at
