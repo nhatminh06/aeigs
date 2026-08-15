@@ -51,3 +51,26 @@ jobs:
       # and not replaced by this.
       - name: Run kyverno test
         run: ./kyverno test security/policies/tests
+
+  kustomize-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Pinned + checksum-verified rather than using the runner's
+      # preinstalled kubectl, whose version isn't ours to control —
+      # matching what this repo already does for the gitleaks and kyverno
+      # binaries. Version tracks the cluster's Kubernetes baseline, since
+      # `kubectl kustomize` embeds the kustomize version tied to that
+      # release.
+      - name: Install kubectl
+        run: |
+          curl -sSL -o kubectl \
+            https://dl.k8s.io/release/v1.36.1/bin/linux/amd64/kubectl
+          echo "629d3f410e09bf49b64ae7079f7f0bda1191efed311f7d37fdbab0ad5b0ec2b7  kubectl" | sha256sum -c -
+          chmod +x kubectl
+      # Catches a broken GitOps composition (missing resource, bad path,
+      # malformed kustomization) before Flux would fail to apply it in
+      # cluster. This builds the manifests only — it does not validate
+      # them against a live API server.
+      - name: Build dev-kind manifests
+        run: ./kubectl kustomize clusters/dev-kind > /dev/null
