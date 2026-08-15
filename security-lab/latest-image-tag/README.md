@@ -2,8 +2,9 @@
 
 ## Objective
 
-Confirm that both an explicit `:latest` tag and an implicit one (no tag
-at all) are rejected at admission, not just the literal string `:latest`.
+Confirm that an explicit `:latest` tag, an implicit one (no tag at all),
+and a tag-shaped-but-not-actually-a-tag registry port are all rejected at
+admission — not just the literal string `:latest`.
 
 ## Threat
 
@@ -20,53 +21,66 @@ without touching Kubernetes or Git at all.
 - [`security/policies/tests/invalid-latest-notag.yaml`](../../security/policies/tests/invalid-latest-notag.yaml)
   — `image: nginx` (no tag; Kubernetes defaults this to `:latest`
   implicitly, which is easy to miss when reviewing a diff)
+- [`security/policies/tests/invalid-latest-port.yaml`](../../security/policies/tests/invalid-latest-port.yaml)
+  — `image: registry.example.com:5000/app` (no tag either — the colon
+  here is a registry port, not a tag separator; a control that matches
+  the raw string for "contains a colon" would wrongly treat this as
+  pinned)
 
 ## Expected defense
 
 The Kyverno `ClusterPolicy`
-[`disallow-latest-tag`](../../security/policies/disallow-latest-tag.yaml)
-has two rules: `require-image-tag` (rejects a missing tag) and
-`disallow-latest-tag` (rejects the literal `:latest`). Both in `Enforce`
-mode.
+[`disallow-latest-tag`](../../security/policies/disallow-latest-tag.yaml),
+rule `require-pinned-image`, in `Enforce` mode. It checks Kyverno's parsed
+`images` context (registry/name/tag/digest already split apart) rather
+than matching the raw image string, so it isn't fooled by a registry
+port and correctly treats a digest-pinned image (no tag, but immutable)
+as pinned.
 
 ## Test procedure
 
 ```
-kubectl apply -f security/policies/tests/invalid-latest.yaml
-kubectl apply -f security/policies/tests/invalid-latest-notag.yaml
+kubectl run t1 --image=nginx:1.27 --dry-run=server -o name
+kubectl run t2 --image=nginx:latest --dry-run=server -o name
+kubectl run t3 --image=nginx --dry-run=server -o name
+kubectl run t4 --image=registry.example.com:5000/app --dry-run=server -o name
+kubectl run t5 --image=registry.example.com:5000/app:1.2.3 --dry-run=server -o name
 ```
 
 ## Observed result
 
-Run against `dev-kind` on 2026-08-13T18:47:37Z, both rejected:
+Run against `dev-kind` on 2026-08-15: `t1` and `t5` created; `t2`, `t3`,
+`t4` rejected, e.g.:
 
 ```
-resource Pod/default/test-latest-tag was blocked due to the following policies
+resource Pod/default/t2 was blocked due to the following policies
 disallow-latest-tag:
-  disallow-latest-tag: 'validation error: Using the ''latest'' image tag is not
-    allowed; pin to a specific version. ...'
-
-resource Pod/default/test-no-tag was blocked due to the following policies
-disallow-latest-tag:
-  require-image-tag: 'validation error: An image tag is required (an untagged
-    image defaults to :latest). ...'
+  require-pinned-image: Container images must be pinned to a specific tag
+    or digest. ...
 ```
 
-The no-tag case specifically confirms the policy doesn't just pattern-match
-the string `latest` — it actually understood the implicit default. The
-matching valid case
-([`security/policies/tests/valid-latest.yaml`](../../security/policies/tests/valid-latest.yaml),
-`nginx:1.27.3`) was created successfully in the same test run.
+A real (non-dry-run) pod was then created and a `kubectl debug` ephemeral
+container attached: a `:latest` ephemeral container was rejected, a
+pinned one was accepted, and the pod was deleted afterward without
+issue — see
+`docs/decisions/0008-kyverno-image-tag-parsed-matching.md` for two
+live-only bugs found and fixed in the course of building this (an
+ephemeral-container bypass caused by a Kyverno default, and a bug that
+briefly blocked deletion of every pod in the cluster).
 
 ## Remediation / what stops this
 
-Already in place: both rules enforced cluster-wide. Every image currently
-running on this cluster (`podinfo:6.14.1`, the `kube-prometheus-stack`
-chart's images, Kyverno's own images) already uses pinned tags, so
-enabling this didn't require changing anything else.
+Already in place: enforced cluster-wide (except
+`kube-system`/`kube-node-lease`/`kube-public`), covering `containers`,
+`initContainers`, and `ephemeralContainers`, and correctly distinguishing
+a registry port from an image tag. Every image currently running on this
+cluster (`podinfo:6.14.1`, the `kube-prometheus-stack` chart's images,
+Kyverno's own images, Authentik's) already uses pinned tags, so enabling
+this didn't require changing anything else.
 
-Not yet covered: a pinned tag can still be re-pushed to the same tag at
-the registry (tags aren't immutable by default on most registries).
-Pinning to a digest (`image@sha256:...`) instead of a tag would close
-that gap — deferred to the supply-chain phase (signing/SBOM), where
-digest pinning fits naturally alongside Cosign verification.
+Not yet covered: a pinned *tag* can still be re-pushed to the same tag at
+the registry (tags aren't immutable by default on most registries) — this
+policy now recognizes a digest reference as pinned, but nothing in this
+repository verifies that the digest actually matches a trusted, signed
+build yet. That's the supply-chain phase (signing/SBOM via Cosign),
+deferred.

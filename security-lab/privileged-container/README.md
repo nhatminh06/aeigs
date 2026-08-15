@@ -56,11 +56,24 @@ matching valid case
 ## Remediation / what stops this
 
 Already in place: Kyverno admission enforcement, `Enforce` mode (not
-`Audit`), applied cluster-wide via `match.any.resources.kinds: [Pod]` so
-no namespace or workload is exempt by default.
+`Audit`), applied to every namespace except `kube-system`/
+`kube-node-lease`/`kube-public` (see the `exclude` block — `kube-proxy`
+legitimately runs privileged there).
 
-Not yet covered: this only checks `Pod`-level `securityContext`. Nothing
-yet enforces `allowPrivilegeEscalation: false` or a restricted
-`seccompProfile`/capabilities baseline across the board (only
-`apps/demo-app` sets those manually) — a real pod-security-standards
+**Also covers ephemeral containers (`kubectl debug`)**: this policy's
+pattern has checked `ephemeralContainers`/`initContainers` since the
+policy was first added, and `match.kinds: [Pod]` alone is enough for
+Kyverno to see an ephemeral-container admission request — Kubernetes
+doesn't change a resource's `kind` for a subresource request, only adds a
+`subresource` field. Verified live on 2026-08-15: a privileged ephemeral
+container attached via `kubectl debug --custom` was blocked with no
+policy change needed. (An earlier assumption in this repository that an
+explicit `Pod/ephemeralcontainers` match plus `background: false` was
+required to close a bypass here came from a flawed live reproduction and
+did not hold up on retest — see
+`docs/decisions/0008-kyverno-image-tag-parsed-matching.md`.)
+
+Not yet covered: nothing yet enforces `allowPrivilegeEscalation: false`
+or a restricted `seccompProfile`/capabilities baseline across the board
+(only `apps/demo-app` sets those manually) — a real pod-security-standards
 policy set is future work, not assumed to exist yet.

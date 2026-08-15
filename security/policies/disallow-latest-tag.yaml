@@ -6,12 +6,20 @@ spec:
   validationFailureAction: Enforce
   background: true
   rules:
-    - name: require-image-tag
+    - name: require-pinned-image
       match:
         any:
           - resources:
               kinds:
                 - Pod
+              # Tag/digest pinning is meaningless on DELETE, and the parsed
+              # `images` context below isn't populated the same way for a
+              # DELETE request (request.object is empty) — scoping to the
+              # operations that actually create/change an image reference
+              # avoids that case entirely rather than null-guarding around it.
+              operations:
+                - CREATE
+                - UPDATE
       # System components in these namespaces are managed by kind/kubeadm,
       # not this repo — excluding them keeps this policy scoped to
       # workloads we actually control.
@@ -23,30 +31,38 @@ spec:
                 - kube-node-lease
                 - kube-public
       validate:
-        message: "An image tag is required (an untagged image defaults to :latest)."
-        pattern:
-          spec:
-            containers:
-              - image: "*:*"
-    - name: disallow-latest-tag
-      match:
-        any:
-          - resources:
-              kinds:
-                - Pod
-      # System components in these namespaces are managed by kind/kubeadm,
-      # not this repo — excluding them keeps this policy scoped to
-      # workloads we actually control.
-      exclude:
-        any:
-          - resources:
-              namespaces:
-                - kube-system
-                - kube-node-lease
-                - kube-public
-      validate:
-        message: "Using the 'latest' image tag is not allowed; pin to a specific version."
-        pattern:
-          spec:
-            containers:
-              - image: "!*:latest"
+        message: >-
+          Container images must be pinned to a specific tag or digest. An
+          image with neither defaults to :latest at pull time, same as one
+          explicitly tagged :latest — this includes an image reference
+          that only names a registry with a non-default port
+          (registry.example.com:5000/app), which looks tagged if you match
+          the raw string for a colon but isn't.
+        # allowExistingViolations defaults to true for deny-condition rules,
+        # which skips enforcement on UPDATE when Kyverno's old-vs-new
+        # comparison decides the object was "already" non-compliant. In
+        # testing that default let a :latest ephemeral debug container
+        # through on a pod whose existing containers were all correctly
+        # pinned — the old/new comparison isn't reliable for this rule
+        # shape, so enforce unconditionally instead.
+        allowExistingViolations: false
+        # Kyverno parses each image reference into registry/name/tag/digest
+        # ahead of time (the `images` context). Matching the raw string
+        # instead (e.g. a pattern like "*:*" or "!*:latest") can't tell a
+        # real tag apart from a registry port — registry.example.com:5000/app
+        # contains a colon but has no tag — so this checks the parsed tag/
+        # digest fields directly rather than re-deriving them from the
+        # string. A digest-pinned image (nginx@sha256:...) has no tag but
+        # is still immutable, so it's treated as pinned.
+        deny:
+          conditions:
+            any:
+              - key: "{{ length((images.containers || `{}`).*.{tag: tag, digest: digest}[?tag=='' && digest=='' || tag=='latest']) }}"
+                operator: GreaterThan
+                value: 0
+              - key: "{{ length((images.initContainers || `{}`).*.{tag: tag, digest: digest}[?tag=='' && digest=='' || tag=='latest']) }}"
+                operator: GreaterThan
+                value: 0
+              - key: "{{ length((images.ephemeralContainers || `{}`).*.{tag: tag, digest: digest}[?tag=='' && digest=='' || tag=='latest']) }}"
+                operator: GreaterThan
+                value: 0
