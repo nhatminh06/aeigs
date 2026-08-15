@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-excluded-namespace-latest-tag
+  namespace: kube-system
+spec:
+  containers:
+    - name: test
+      # Would fail require-pinned-image anywhere else — passes here only
+      # because kube-system is excluded (kubeadm/kind-managed components
+      # aren't ours to pin).
+      image: some-system-component:latest

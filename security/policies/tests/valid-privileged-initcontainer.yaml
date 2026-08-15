@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-initcontainer-nonprivileged
+  namespace: default
+spec:
+  initContainers:
+    - name: init
+      image: busybox:1.36.1
+      securityContext:
+        privileged: false
+  containers:
+    - name: test
+      image: nginx:1.27.3
+      securityContext:
+        privileged: false

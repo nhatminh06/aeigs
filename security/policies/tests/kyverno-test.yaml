@@ -1,0 +1,166 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: security-policies
+# `kyverno test` simulates the rule engine directly against these YAML
+# fixtures as a single CREATE-shaped evaluation — it does not model the
+# real admission webhook's operation routing (CREATE/UPDATE/DELETE), nor
+# Kyverno's old-vs-new object comparison for deny-condition rules
+# (allowExistingViolations). Both of those turned out to matter in
+# practice: disallow-latest-tag's deny rule initially let a live `kubectl
+# debug`-added :latest ephemeral container through despite every fixture
+# below already "passing" here, and separately blocked all pod deletion
+# cluster-wide, because neither bug is visible to this static, single-
+# object evaluation. Both were only found by testing the real admission
+# path live — see security/policies/tests/README.md and
+# docs/decisions/0008-kyverno-image-tag-parsed-matching.md. Keep both: this
+# suite for rule-logic regressions, live testing for admission-routing and
+# operation-handling regressions. Neither alone is sufficient.
+policies:
+  - ../disallow-latest-tag.yaml
+  - ../disallow-privileged-containers.yaml
+resources:
+  - valid-latest.yaml
+  - invalid-latest.yaml
+  - invalid-latest-notag.yaml
+  - valid-latest-port.yaml
+  - invalid-latest-port.yaml
+  - valid-latest-digest.yaml
+  - valid-latest-excluded-namespace.yaml
+  - valid-latest-initcontainer.yaml
+  - invalid-latest-initcontainer.yaml
+  - invalid-latest-initcontainer-notag.yaml
+  - valid-latest-ephemeralcontainer.yaml
+  - invalid-latest-ephemeralcontainer.yaml
+  - invalid-latest-ephemeralcontainer-notag.yaml
+  - valid-privileged.yaml
+  - invalid-privileged.yaml
+  - valid-privileged-initcontainer.yaml
+  - invalid-privileged-initcontainer.yaml
+  - valid-privileged-ephemeralcontainer.yaml
+  - invalid-privileged-ephemeralcontainer.yaml
+results:
+  # --- disallow-latest-tag: normal container ---
+  - policy: disallow-latest-tag
+    rule: require-pinned-image
+    resources:
+      - test-pinned-tag
+    kind: Pod
+    result: pass
+  - policy: disallow-latest-tag
+    rule: require-pinned-image
+    resources:
+      - test-latest-tag
+    kind: Pod
+    result: fail
+  - policy: disallow-latest-tag
+    rule: require-pinned-image
+    resources:
+      - test-no-tag
+    kind: Pod
+    result: fail
+  # normal container, registry with a non-default port — the colon in
+  # "registry.example.com:5000" is not a tag separator
+  - policy: disallow-latest-tag
+    rule: require-pinned-image
+    resources:
+      - test-registry-port-no-tag
+    kind: Pod
+    result: fail
+  - policy: disallow-latest-tag
+    rule: require-pinned-image
+    resources:
+      - test-registry-port-pinned-tag
+    kind: Pod
+    result: pass
+  # digest-pinned, no tag at all — still immutable, must pass
+  - policy: disallow-latest-tag
+    rule: require-pinned-image
+    resources:
+      - test-digest-pinned
+    kind: Pod
+    result: pass
+  # kube-system is excluded — this would fail anywhere else in the cluster
+  - policy: disallow-latest-tag
+    rule: require-pinned-image
+    resources:
+      - test-excluded-namespace-latest-tag
+    kind: Pod
+    result: skip
+  # --- disallow-latest-tag: initContainer ---
+  - policy: disallow-latest-tag
+    rule: require-pinned-image
+    resources:
+      - test-initcontainer-pinned-tag
+    kind: Pod
+    result: pass
+  - policy: disallow-latest-tag
+    rule: require-pinned-image
+    resources:
+      - test-initcontainer-latest-tag
+    kind: Pod
+    result: fail
+  - policy: disallow-latest-tag
+    rule: require-pinned-image
+    resources:
+      - test-initcontainer-no-tag
+    kind: Pod
+    result: fail
+  # --- disallow-latest-tag: ephemeralContainer ---
+  - policy: disallow-latest-tag
+    rule: require-pinned-image
+    resources:
+      - test-ephemeralcontainer-pinned-tag
+    kind: Pod
+    result: pass
+  - policy: disallow-latest-tag
+    rule: require-pinned-image
+    resources:
+      - test-ephemeralcontainer-latest-tag
+    kind: Pod
+    result: fail
+  - policy: disallow-latest-tag
+    rule: require-pinned-image
+    resources:
+      - test-ephemeralcontainer-no-tag
+    kind: Pod
+    result: fail
+  # --- disallow-privileged-containers: normal container ---
+  - policy: disallow-privileged-containers
+    rule: privileged-containers
+    resources:
+      - test-nonprivileged
+    kind: Pod
+    result: pass
+  - policy: disallow-privileged-containers
+    rule: privileged-containers
+    resources:
+      - test-privileged
+    kind: Pod
+    result: fail
+  # --- disallow-privileged-containers: initContainer ---
+  - policy: disallow-privileged-containers
+    rule: privileged-containers
+    resources:
+      - test-initcontainer-nonprivileged
+    kind: Pod
+    result: pass
+  - policy: disallow-privileged-containers
+    rule: privileged-containers
+    resources:
+      - test-initcontainer-privileged
+    kind: Pod
+    result: fail
+  # --- disallow-privileged-containers: ephemeralContainer ---
+  - policy: disallow-privileged-containers
+    rule: privileged-containers
+    resources:
+      - test-ephemeralcontainer-nonprivileged
+    kind: Pod
+    result: pass
+  - policy: disallow-privileged-containers
+    rule: privileged-containers
+    resources:
+      - test-ephemeralcontainer-privileged
+    kind: Pod
+    result: fail

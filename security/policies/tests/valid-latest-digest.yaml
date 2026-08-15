@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-digest-pinned
+  namespace: default
+spec:
+  containers:
+    - name: test
+      # No tag, but a digest is just as immutable as a pinned tag — this
+      # must not be classified the same as a genuinely untagged image.
+      image: nginx@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

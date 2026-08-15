@@ -33,3 +33,21 @@ jobs:
           scan-type: config
           scan-ref: .
           trivy-config: trivy.yaml
+
+  kyverno-policy-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install kyverno CLI
+        run: |
+          curl -sSL -o kyverno-cli.tar.gz \
+            https://github.com/kyverno/kyverno/releases/download/v1.18.2/kyverno-cli_v1.18.2_linux_x86_64.tar.gz
+          echo "cb2feb8356149fd2fe774c894ccf0969f4a60a83867dd913af724f74ffbbc18b  kyverno-cli.tar.gz" | sha256sum -c -
+          tar -xzf kyverno-cli.tar.gz kyverno
+      # Static rule-logic check only — evaluates each fixture as a single
+      # object, not as CREATE/UPDATE/DELETE requests compared against
+      # prior state. See security/policies/tests/README.md for why the
+      # live kubectl-debug/kubectl-apply procedure there is still required
+      # and not replaced by this.
+      - name: Run kyverno test
+        run: ./kyverno test security/policies/tests
