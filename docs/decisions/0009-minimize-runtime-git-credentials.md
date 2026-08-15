@@ -69,8 +69,12 @@ Distinguish **bootstrap credential** from **runtime credential**:
   config change at that point, not a silent gap.
 - `flux bootstrap` re-runs regenerate `gotk-sync.yaml` with `secretRef`
   wired back in by default (same as the reconcile-interval override
-  already documented in that file) — remove it again after any future
-  bootstrap re-run.
+  already documented in that file), and — per its own `--help` — commit
+  and push that to the branch, so a re-run would undo this decision in
+  Git rather than just in the cluster. Rebuilds therefore do not re-run
+  it: `scripts/bootstrap-flux.sh` applies the already-committed
+  `flux-system` manifests instead, which needs no token and cannot
+  modify the repository.
 - The `flux-system` Secret (the token, plus unused leftover SSH keypair
   material from the original bootstrap attempt) was deleted from the live
   `dev-kind` cluster as part of validating this change — it was already
