@@ -40,6 +40,36 @@ Planned:
 - `flux` CLI
 - `sops` and `age` (secrets)
 
+### Pinned versions
+
+Rebuilding the cluster should reproduce the same baseline rather than
+picking up whatever happens to be installed, so two things are pinned:
+
+```
+Kubernetes (kind node): v1.36.1, by tag AND digest
+                        (bootstrap/kind/cluster.yaml)
+Flux CLI + controllers: v2.9.4
+                        (clusters/dev-kind/flux-system/gotk-components.yaml)
+```
+
+Verify before bootstrapping a cluster:
+
+```
+flux version --client     # expect: flux: v2.9.4
+```
+
+The Flux CLI writes `gotk-components.yaml` at its own version, so a CLI
+that doesn't match the committed manifest would silently upgrade (or
+downgrade) the controllers on the next `flux bootstrap`. `flux version`
+against a running cluster prints the controller versions for comparison
+(`distribution: flux-v2.9.4`).
+
+Upgrading either is deliberate, not incidental: pick the new version,
+re-pin it (for the node image, tag **and** digest together — the digest
+is the multi-arch manifest list, so it works on arm64 and amd64), then
+re-run the platform validation rather than assuming the existing controls
+still hold on a new baseline.
+
 ## Architecture (current stage)
 
 ![Aegis architecture: source & bootstrap, FluxCD GitOps control plane, Kubernetes API & workloads, admission control, and the local dev/drift-test loop](docs/architecture/architecture.png)

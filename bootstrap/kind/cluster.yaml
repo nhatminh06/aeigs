@@ -3,3 +3,15 @@ kind: Cluster
 name: aegis-dev
 nodes:
   - role: control-plane
+    # Pinned so a `kind` upgrade can't silently change the Kubernetes
+    # baseline every control in this repo was tested against. v1.36.1 is
+    # kind v0.32.0's own default node image — the combination kind
+    # upstream tests — and is what this cluster has been running while
+    # Flux v2.9.4, Kyverno v1.18.2, kube-prometheus-stack, and Authentik
+    # were each validated, so pinning it records a proven baseline rather
+    # than bundling an untested Kubernetes upgrade into a reproducibility
+    # change. The digest is the multi-arch manifest list (verified against
+    # the registry), so it resolves on both arm64 and amd64.
+    # Upgrading is deliberate: pick a version the installed kind supports,
+    # re-pin tag AND digest together, then re-run the platform validation.
+    image: kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
