@@ -13,14 +13,14 @@
     "**/*.enc.yaml"
   ],
   "flux": {
-    "fileMatch": [
-      "(^|/)helmrelease\\.yaml$",
-      "(^|/)helmrepository\\.yaml$"
+    "managerFilePatterns": [
+      "/(^|/)helmrelease\\.yaml$/",
+      "/(^|/)helmrepository\\.yaml$/"
     ]
   },
   "kubernetes": {
-    "fileMatch": [
-      "^apps/.+/deployment\\.yaml$"
+    "managerFilePatterns": [
+      "/^apps/.+/deployment\\.yaml$/"
     ]
   },
   "packageRules": [
