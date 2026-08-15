@@ -1,0 +1,35 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "Built-in managers only. Verified by dry-run extraction against this repo: Helm chart versions in the three HelmReleases, the podinfo image, GitHub Action SHA pins, and the Flux version in gotk-components.yaml are all detected.",
+    "NOT detected by any built-in manager, confirmed by the same dry-run: the kindest/node tag+digest in bootstrap/kind/cluster.yaml, and the gitleaks / kyverno-CLI / kubectl versions and checksums embedded in .github/workflows/repo-security.yml. Those are shell strings and a kind config, not package files. They need regex customManagers, which are deliberately deferred until this config has been observed running."
+  ],
+  "extends": [
+    "config:recommended"
+  ],
+  "dependencyDashboard": true,
+  "prConcurrentLimit": 3,
+  "ignorePaths": [
+    "**/*.enc.yaml"
+  ],
+  "flux": {
+    "fileMatch": [
+      "(^|/)helmrelease\\.yaml$",
+      "(^|/)helmrepository\\.yaml$"
+    ]
+  },
+  "kubernetes": {
+    "fileMatch": [
+      "^apps/.+/deployment\\.yaml$"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "Flux applies whatever lands on main, so an automerged update would deploy itself to the cluster without anyone reading it. Every update here is infrastructure and gets human review first.",
+      "matchPackageNames": [
+        "*"
+      ],
+      "automerge": false
+    }
+  ]
+}

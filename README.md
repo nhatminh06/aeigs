@@ -40,6 +40,36 @@ Planned:
 - `flux` CLI
 - `sops` and `age` (secrets)
 
+### Pinned versions
+
+Rebuilding the cluster should reproduce the same baseline rather than
+picking up whatever happens to be installed, so two things are pinned:
+
+```
+Kubernetes (kind node): v1.36.1, by tag AND digest
+                        (bootstrap/kind/cluster.yaml)
+Flux CLI + controllers: v2.9.4
+                        (clusters/dev-kind/flux-system/gotk-components.yaml)
+```
+
+Verify before bootstrapping a cluster:
+
+```
+flux version --client     # expect: flux: v2.9.4
+```
+
+The Flux CLI writes `gotk-components.yaml` at its own version, so a CLI
+that doesn't match the committed manifest would silently upgrade (or
+downgrade) the controllers on the next `flux bootstrap`. `flux version`
+against a running cluster prints the controller versions for comparison
+(`distribution: flux-v2.9.4`).
+
+Upgrading either is deliberate, not incidental: pick the new version,
+re-pin it (for the node image, tag **and** digest together — the digest
+is the multi-arch manifest list, so it works on arm64 and amd64), then
+re-run the platform validation rather than assuming the existing controls
+still hold on a new baseline.
+
 ## Architecture (current stage)
 
 ![Aegis architecture: source & bootstrap, FluxCD GitOps control plane, Kubernetes API & workloads, admission control, and the local dev/drift-test loop](docs/architecture/architecture.png)
@@ -96,24 +126,46 @@ every fetch afterward, indefinitely, even though this repository is
 public and doesn't need one for reads. `gotk-sync.yaml`'s `GitRepository`
 has had that `secretRef` deliberately removed (verified live: anonymous
 HTTPS reconciliation works with it gone); see
-`docs/decisions/0009-minimize-runtime-git-credentials.md`. A bootstrap
-re-run regenerates `secretRef` — remove it again afterward, and once
-reconciled, the now-unreferenced `flux-system` Secret can be deleted:
-`kubectl -n flux-system delete secret flux-system`.
+`docs/decisions/0009-minimize-runtime-git-credentials.md`.
 
-To bring the platform up on a fresh or recreated cluster (`kind` has no
-"stop" — `cluster-down.sh` deletes it entirely, wiping all in-cluster
-state): `cluster-up.sh`, then re-run the `flux bootstrap github
---token-auth` command above (idempotent — it detects the existing token
-secret and sync manifests and just reconciles), then remove `secretRef`
-from the live `GitRepository`/re-apply this repo's version of
-`gotk-sync.yaml` and delete the Secret as described above. **Before that
-finishes reconciling anything that decrypts secrets**, recreate the
-`sops-age` secret too (see the Secrets section below) — `apps`,
-`observability`, and `identity` all fail to decrypt without it, since it
-doesn't survive a cluster rebuild any more than anything else does.
-Ongoing changes to `clusters/dev-kind/` just need a commit and push; no
-manual `kubectl apply` is needed after the first bootstrap.
+**That is why rebuilds no longer re-run `flux bootstrap`.** By its own
+`--help`, `flux bootstrap github` "commits the Flux manifests to the
+specified branch" — so re-running it regenerates `gotk-sync.yaml` with a
+token-backed `secretRef` and pushes that to `main`, silently undoing the
+hardening above (and resetting the 1m interval). The manifests it would
+generate are already committed here, so a rebuild applies those instead
+via `scripts/bootstrap-flux.sh`, which needs no GitHub token and cannot
+modify the repository. The original bootstrap command is kept above as
+the historical record of how `flux-system/` first came to exist, not as
+the recovery procedure.
+
+### Rebuilding the cluster
+
+`kind` has no "stop" — `cluster-down.sh` deletes the cluster entirely,
+wiping all in-cluster state. Two commands bring it back:
+
+```
+scripts/cluster-up.sh        # pinned kind node image (see above)
+scripts/bootstrap-flux.sh    # Flux + sops-age + committed sync config
+```
+
+`bootstrap-flux.sh` applies the committed `gotk-components.yaml`, waits
+for the CRDs and controllers, restores the `sops-age` secret from the age
+key on disk, then applies `gotk-sync.yaml`. Flux takes over from there
+and reconciles everything else from Git. It refuses to run against a
+kubectl context other than `kind-aegis-dev`, and it needs no GitHub
+token — the `GitRepository` reads this public repository anonymously.
+
+The one thing that cannot be rebuilt from Git is the **age private key**:
+it decrypts every `*.enc.yaml`, so `apps`, `observability`, and
+`identity` cannot reconcile without it. Restore the *existing* key from
+backup to `~/.config/sops/age/keys.txt` (or point `SOPS_AGE_KEY_FILE` at
+it) before running the script — running `age-keygen` instead produces a
+new key that cannot decrypt anything already committed. The script fails
+loudly rather than continuing if the key is missing.
+
+After the first bootstrap, ongoing changes to `clusters/dev-kind/` just
+need a commit and push; no manual `kubectl apply` is needed.
 
 `apps/demo-app` runs `podinfo`, wired in via
 `clusters/dev-kind/apps.yaml` (a Flux `Kustomization` pointing at
