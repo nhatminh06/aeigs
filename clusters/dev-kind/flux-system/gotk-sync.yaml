@@ -9,8 +9,16 @@ spec:
   interval: 1m0s
   ref:
     branch: main
-  secretRef:
-    name: flux-system
+  # No secretRef: this repo is public, and anonymous HTTPS can already
+  # read it — verified both with `git ls-remote` (credential helpers
+  # disabled) and live, by removing this field from the running
+  # GitRepository and confirming source-controller kept fetching
+  # successfully. `flux bootstrap --token-auth` wires up a token-backed
+  # secretRef by default even for a public repo; removed deliberately so
+  # a compromised source-controller/flux-system namespace can't
+  # exfiltrate a live GitHub token that reconciliation never actually
+  # needed — see docs/decisions/0009-minimize-runtime-git-credentials.md.
+  # A bootstrap re-run regenerates this field; remove it again afterward.
   url: https://github.com/nhatminh06/aeigs.git
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
