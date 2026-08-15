@@ -44,6 +44,13 @@ Planned:
 
 ![Aegis architecture: source & bootstrap, FluxCD GitOps control plane, Kubernetes API & workloads, admission control, and the local dev/drift-test loop](docs/architecture/architecture.png)
 
+*Diagram predates Authentik (added after this image was made): identity
+isn't pictured yet. It sits alongside Kyverno conceptually — another
+`security/` component Flux reconciles, providing OIDC for Grafana. See
+the Authentik paragraph below and
+`docs/decisions/0007-use-authentik-for-identity.md` for what the diagram
+doesn't yet show.*
+
 Laptop → Docker → `kind` (cluster `aegis-dev`) → FluxCD (reconciling
 `clusters/dev-kind` from this repo) → `apps/demo-app` (podinfo, namespace
 `demo-app`) and `observability/kube-prometheus-stack` (Prometheus +
@@ -81,11 +88,17 @@ comment in that file (re-running `flux bootstrap` regenerates this file
 and resets the interval; re-apply the shortened interval if that
 happens).
 
-To bring the platform up from a stopped cluster: `cluster-up.sh`, then
-re-run the `flux bootstrap github --token-auth` command above (idempotent
-— it detects the existing token secret and sync manifests and just
-reconciles). Ongoing changes to `clusters/dev-kind/` just need a commit
-and push; no manual `kubectl apply` is needed after the first bootstrap.
+To bring the platform up on a fresh or recreated cluster (`kind` has no
+"stop" — `cluster-down.sh` deletes it entirely, wiping all in-cluster
+state): `cluster-up.sh`, then re-run the `flux bootstrap github
+--token-auth` command above (idempotent — it detects the existing token
+secret and sync manifests and just reconciles). **Before that finishes
+reconciling anything that decrypts secrets**, recreate the `sops-age`
+secret too (see the Secrets section below) — `apps`, `observability`, and
+`identity` all fail to decrypt without it, since it doesn't survive a
+cluster rebuild any more than anything else does. Ongoing changes to
+`clusters/dev-kind/` just need a commit and push; no manual `kubectl
+apply` is needed after the first bootstrap.
 
 `apps/demo-app` runs `podinfo`, wired in via
 `clusters/dev-kind/apps.yaml` (a Flux `Kustomization` pointing at
@@ -109,7 +122,9 @@ The `apps` Kustomization (`clusters/dev-kind/apps.yaml`) references this
 secret via `spec.decryption`. This is a manual, non-GitOps step by
 design: the key that unlocks encrypted secrets can't itself be managed by
 the system it unlocks. To encrypt a new secret, name it `secret.enc.yaml`
-(matches `.sops.yaml`) and run `sops --encrypt --in-place <file>`; the
+(or `<descriptive-name>.enc.yaml` if the directory already has one —
+matches `.sops.yaml`'s `path_regex`) and run `sops --encrypt --in-place
+<file>`; the
 `age` public key encoded in `.sops.yaml` is safe to commit, the private
 key at `~/.config/sops/age/keys.txt` is not — export
 `SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt` so `sops` finds it on

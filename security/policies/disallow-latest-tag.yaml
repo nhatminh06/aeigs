@@ -12,6 +12,16 @@ spec:
           - resources:
               kinds:
                 - Pod
+      # System components in these namespaces are managed by kind/kubeadm,
+      # not this repo — excluding them keeps this policy scoped to
+      # workloads we actually control.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-node-lease
+                - kube-public
       validate:
         message: "An image tag is required (an untagged image defaults to :latest)."
         pattern:
@@ -24,6 +34,16 @@ spec:
           - resources:
               kinds:
                 - Pod
+      # System components in these namespaces are managed by kind/kubeadm,
+      # not this repo — excluding them keeps this policy scoped to
+      # workloads we actually control.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-node-lease
+                - kube-public
       validate:
         message: "Using the 'latest' image tag is not allowed; pin to a specific version."
         pattern:

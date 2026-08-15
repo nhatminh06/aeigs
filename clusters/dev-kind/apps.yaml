@@ -7,6 +7,8 @@ spec:
   interval: 1m
   path: ./apps/demo-app
   prune: true
+  wait: true
+  timeout: 2m
   decryption:
     provider: sops
     secretRef:
