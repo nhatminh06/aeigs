@@ -1,0 +1,26 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: aegis
+  namespace: gateway
+spec:
+  gatewayClassName: cilium
+  listeners:
+    # HTTP only for now. TLS is added once the development CA exists and a
+    # client has been shown to reject, then accept, the certificate — doing
+    # both at once would make a routing failure and a trust failure look
+    # identical.
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: "*.aegis.test"
+      allowedRoutes:
+        # Routes live next to the workloads they expose, so they come from
+        # other namespaces. Restricted to namespaces carrying the label
+        # below rather than All, so a route cannot be attached from an
+        # unrelated namespace.
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              aegis.dev/gateway-routes: "true"

@@ -1,0 +1,17 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: grafana
+  namespace: observability
+spec:
+  parentRefs:
+    - name: aegis
+      namespace: gateway
+  hostnames:
+    - grafana.aegis.test
+  rules:
+    - backendRefs:
+        # The Grafana Service publishes 80 and forwards to the container's
+        # 3000; the route targets the Service port.
+        - name: kube-prometheus-stack-grafana
+          port: 80
