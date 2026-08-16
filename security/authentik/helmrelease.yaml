@@ -69,10 +69,29 @@ spec:
       resources:
         requests:
           cpu: 100m
-          memory: 256Mi
+          # Measured, not guessed: a freshly started server sits at ~394Mi
+          # and its cAdvisor working set runs ~420-440Mi, so the previous
+          # 256Mi request advertised roughly half of what this container
+          # actually holds. 512Mi reserves what it really uses.
+          memory: 512Mi
         limits:
           cpu: 500m
-          memory: 512Mi
+          # 512Mi OOMKilled the server twice (exit 137), the second time
+          # reproduced on demand with 200 requests at concurrency 8. Read
+          # from the container's own cgroup rather than sampled metrics,
+          # because Prometheus scrapes cAdvisor every 30s and missed the
+          # transient peak entirely — it reported 439Mi for a container
+          # that had already breached 512Mi:
+          #
+          #   memory.peak    = 561459200  (535Mi) under that load
+          #   memory.current =  ~532Mi    settled afterwards, flat
+          #
+          # So the old limit sat below both the peak and the post-traffic
+          # resting level. 768Mi clears the measured peak by ~43% and is
+          # ~10% of this node's 7.75Gi. Memory plateaus rather than
+          # climbing, so this is headroom for a tight limit, not a larger
+          # limit hiding a leak.
+          memory: 768Mi
     worker:
       resources:
         requests:
