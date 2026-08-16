@@ -12,22 +12,29 @@ that govern how this repository is built.
 
 ```
 Implemented:
-- local kind cluster (create/delete via scripts/cluster-up.sh, cluster-down.sh)
-- Flux reconciliation on dev-kind, bootstrapped against github.com/nhatminh06/aeigs
+- reproducible dev-kind baseline: kindest/node pinned by tag + digest, Kubernetes v1.36.1
+- Cilium 1.20.0 as the dev-kind CNI, installed before Flux
+- Hubble Relay for flow visibility; observed traffic in docs/network/traffic-inventory.md
+- Authentik PostgreSQL, server and worker ingress have workload-level
+  NetworkPolicy boundaries based on observed traffic (egress not covered)
+- Gateway API HTTP routing (Cilium's own controller) for grafana.aegis.test
+  and auth.aegis.test; plain HTTP only, no TLS
+- the Gateway's backend peer is Cilium's reserved:ingress identity, so that
+  one allow rule is a CiliumNetworkPolicy; all workload peers stay portable
+- Flux v2.9.4, reconstructed from committed manifests via scripts/bootstrap-flux.sh
+- Flux reads this public repo over anonymous HTTPS; no GitHub token in the cluster
+- SOPS + age secrets, with key/recipient verified during reconstruction
 - first GitOps-managed application (apps/demo-app: podinfo)
-- SOPS + age secrets, decrypted in-cluster by Flux
 - Prometheus + Grafana (kube-prometheus-stack via HelmRelease)
-- Kyverno admission policies (deny privileged containers, deny latest tags)
-- security-lab: 3 documented attack scenarios (security-lab/)
-- repo-level scanning in CI: Gitleaks (secrets) + Trivy config (manifest misconfigurations)
 - Authentik identity, Grafana logs in via OIDC through it
-
-In progress:
-- (nothing currently)
+- Kyverno admission policies (deny privileged containers, require pinned images)
+- CI: Gitleaks, Trivy config, Kyverno policy tests, Kustomize build validation
+- Renovate dependency discovery (built-in managers; no automerge)
+- security-lab: 5 documented attack scenarios (security-lab/)
 
 Planned:
+- wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
 - container build/scan/SBOM/signing (needs a real image-building app repo first)
-- NetworkPolicy / default-deny
 - persistent home cluster
 - backup and disaster-recovery drills
 ```
@@ -38,18 +45,21 @@ Planned:
 - `kind`
 - `kubectl`
 - `flux` CLI
-- `sops` and `age` (secrets)
+- `helm` (Cilium install)
+- `sops` and `age` (secrets; `age-keygen` is required by bootstrap-flux.sh)
 
 ### Pinned versions
 
 Rebuilding the cluster should reproduce the same baseline rather than
-picking up whatever happens to be installed, so two things are pinned:
+picking up whatever happens to be installed, so these are pinned:
 
 ```
 Kubernetes (kind node): v1.36.1, by tag AND digest
                         (bootstrap/kind/cluster.yaml)
 Flux CLI + controllers: v2.9.4
                         (clusters/dev-kind/flux-system/gotk-components.yaml)
+Cilium (CNI + Hubble):  1.20.0
+                        (scripts/bootstrap-cilium.sh)
 ```
 
 Verify before bootstrapping a cluster:
@@ -74,14 +84,14 @@ still hold on a new baseline.
 
 ![Aegis architecture: source & bootstrap, FluxCD GitOps control plane, Kubernetes API & workloads, admission control, and the local dev/drift-test loop](docs/architecture/architecture.png)
 
-*Diagram predates Authentik (added after this image was made): identity
-isn't pictured yet. It sits alongside Kyverno conceptually — another
-`security/` component Flux reconciles, providing OIDC for Grafana. See
-the Authentik paragraph below and
-`docs/decisions/0007-use-authentik-for-identity.md` for what the diagram
-doesn't yet show.*
+*This image is out of date — it predates Authentik, the anonymous Git
+reconciliation, and the current bootstrap path. No editable source for it
+exists in the repository, so it can't be revised in place.
+[`docs/architecture/README.md`](docs/architecture/README.md) is the
+accurate, maintainable version and is what to update as the platform
+changes.*
 
-Laptop → Docker → `kind` (cluster `aegis-dev`) → FluxCD (reconciling
+Laptop → Docker → `kind` (cluster `aegis-dev`, Cilium as CNI) → FluxCD (reconciling
 `clusters/dev-kind` from this repo) → `apps/demo-app` (podinfo, namespace
 `demo-app`) and `observability/kube-prometheus-stack` (Prometheus +
 Grafana, namespace `observability`), with `security/kyverno` +
@@ -142,12 +152,20 @@ the recovery procedure.
 ### Rebuilding the cluster
 
 `kind` has no "stop" — `cluster-down.sh` deletes the cluster entirely,
-wiping all in-cluster state. Two commands bring it back:
+wiping all in-cluster state. Three commands bring it back, in this order:
 
 ```
-scripts/cluster-up.sh        # pinned kind node image (see above)
+scripts/cluster-up.sh        # pinned kind node image, default CNI disabled
+scripts/bootstrap-cilium.sh  # Cilium 1.20.0 + Hubble Relay -> node Ready, DNS
 scripts/bootstrap-flux.sh    # Flux + sops-age + committed sync config
 ```
+
+Between the first two steps the node is `NotReady` and CoreDNS has not
+started — there is no pod network until Cilium is installed. That gap is
+expected, not a broken cluster. Cilium is installed here rather than by
+Flux because Flux's own controllers need a working pod network to
+reconcile anything; see
+`docs/decisions/0010-bootstrap-cilium-outside-flux.md`.
 
 `bootstrap-flux.sh` applies the committed `gotk-components.yaml`, waits
 for the CRDs and controllers, restores the `sops-age` secret from the age
@@ -176,14 +194,25 @@ against the real cluster. See `docs/decisions/` for why Flux and kind were
 chosen.
 
 Secrets are encrypted with SOPS + age (see
-`docs/decisions/0003-use-sops-age-for-secrets.md`). To bring up decryption
-on a cluster:
+`docs/decisions/0003-use-sops-age-for-secrets.md`). Two situations look
+similar and must not be confused — one generates a key, the other must
+never generate one:
+
+**Initial setup (once per repository, already done here):** generate the
+first key, put its public half in `.sops.yaml` as the recipient, and back
+up the private half somewhere outside Git.
 
 ```
-age-keygen -o ~/.config/sops/age/keys.txt   # once, keep the output safe — never commit it
-kubectl -n flux-system create secret generic sops-age \
-  --from-file=age.agekey=~/.config/sops/age/keys.txt
+age-keygen -o ~/.config/sops/age/keys.txt   # keep the output safe — never commit it
 ```
+
+**Rebuilding an existing Aegis cluster:** restore the *existing* private
+key from backup to `~/.config/sops/age/keys.txt` (or point
+`SOPS_AGE_KEY_FILE` at it) and run `scripts/bootstrap-flux.sh`, which
+creates the `sops-age` secret for you after checking the key matches
+`.sops.yaml`'s recipient. **Do not run `age-keygen` here** — a new key
+produces a new recipient and cannot decrypt anything already committed,
+which is unrecoverable without the original key.
 
 The `apps` Kustomization (`clusters/dev-kind/apps.yaml`) references this
 secret via `spec.decryption`. This is a manual, non-GitOps step by
@@ -250,9 +279,13 @@ configured by hand through the Authentik UI. Verified with a real login:
 Grafana provisioned a new user (`akadmin@aegis.local`,
 `authLabels: ["Generic OAuth"]`) distinct from the local `admin` account,
 confirmed via the Grafana API, not just observed once in a browser.
-Reaching both services requires `kubectl port-forward` on this dev
-cluster (`authentik-server` to `9000`, `kube-prometheus-stack-grafana` to
-`3000`) — no ingress yet.
+Both services are reachable over plain HTTP through the Gateway at
+`http://grafana.aegis.test` and `http://auth.aegis.test`, which requires
+resolving both names to `127.0.0.1` — either two `/etc/hosts` entries or
+`curl --resolve <name>:80:127.0.0.1`. There is no TLS, so this is not a
+secure ingress path; the OIDC login flow still uses the port-forward
+hostnames (`authentik-server` to `9000`, `kube-prometheus-stack-grafana` to
+`3000`), which also remain the fallback when the Gateway is being changed.
 
 Every security layer described in `CLAUDE.md` beyond this is planned but
 not yet present in this repository. Nothing above this stage should be
