@@ -20,10 +20,15 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FLUX_DIR="${REPO_ROOT}/clusters/dev-kind/flux-system"
 AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-${HOME}/.config/sops/age/keys.txt}"
 
-if ! command -v kubectl >/dev/null 2>&1; then
-  echo "error: required command 'kubectl' not found on PATH" >&2
-  exit 1
-fi
+# age-keygen is required, not optional: it is the only way to check the
+# restored key actually decrypts this repo before the secret is created.
+# Continuing without that check is how a wrong key gets installed silently.
+for cmd in kubectl age-keygen; do
+  if ! command -v "${cmd}" >/dev/null 2>&1; then
+    echo "error: required command '${cmd}' not found on PATH" >&2
+    exit 1
+  fi
+done
 
 # Guard against applying cluster-wide resources to the wrong cluster —
 # other kind clusters may exist on this machine.
@@ -49,25 +54,21 @@ fi
 # bootstrap "successfully" and only fail later as opaque decryption errors
 # on the apps/identity/observability Kustomizations. Compares public
 # halves only — the private key is never read into a variable or printed.
-if command -v age-keygen >/dev/null 2>&1; then
-  key_recipient="$(age-keygen -y "${AGE_KEY_FILE}" 2>/dev/null || true)"
-  sops_recipient="$(grep -o 'age1[a-z0-9]*' "${REPO_ROOT}/.sops.yaml" | head -1)"
-  if [ -z "${key_recipient}" ]; then
-    echo "error: could not derive a public key from '${AGE_KEY_FILE}'" >&2
-    echo "       the file may be corrupt or not an age key" >&2
-    exit 1
-  fi
-  if [ "${key_recipient}" != "${sops_recipient}" ]; then
-    echo "error: age key does not match the recipient in .sops.yaml" >&2
-    echo "       key file : ${key_recipient}" >&2
-    echo "       .sops.yaml: ${sops_recipient}" >&2
-    echo "       this key cannot decrypt this repository's secrets" >&2
-    exit 1
-  fi
-  echo "==> age key matches .sops.yaml recipient (${key_recipient})"
-else
-  echo "warning: age-keygen not found; skipping key/recipient match check" >&2
+key_recipient="$(age-keygen -y "${AGE_KEY_FILE}" 2>/dev/null || true)"
+sops_recipient="$(grep -o 'age1[a-z0-9]*' "${REPO_ROOT}/.sops.yaml" | head -1)"
+if [ -z "${key_recipient}" ]; then
+  echo "error: could not derive a public key from '${AGE_KEY_FILE}'" >&2
+  echo "       the file may be corrupt or not an age key" >&2
+  exit 1
 fi
+if [ "${key_recipient}" != "${sops_recipient}" ]; then
+  echo "error: age key does not match the recipient in .sops.yaml" >&2
+  echo "       key file : ${key_recipient}" >&2
+  echo "       .sops.yaml: ${sops_recipient}" >&2
+  echo "       this key cannot decrypt this repository's secrets" >&2
+  exit 1
+fi
+echo "==> age key matches .sops.yaml recipient (${key_recipient})"
 
 echo "==> installing Flux controllers (committed gotk-components.yaml)"
 kubectl apply -f "${FLUX_DIR}/gotk-components.yaml"

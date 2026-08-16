@@ -15,11 +15,13 @@ example, expected defense, test procedure, observed result, remediation.
   `disallow-privileged-containers`
 - [`latest-image-tag/`](latest-image-tag/) — Kyverno `disallow-latest-tag`
 - [`flux-drift/`](flux-drift/) — Flux GitOps drift correction
+- [`leaked-secret/`](leaked-secret/) — Gitleaks secret scanning
+- [`network-lateral-movement/`](network-lateral-movement/) — NetworkPolicy
+  protecting the Authentik database
 
 ## Planned (not yet backed by a control, so not labs yet)
 
 - `rbac-escalation/` — needs least-privilege RBAC conventions first
-- `leaked-secret/` — needs a secret-scanning control (Gitleaks in CI) first
 - `unsigned-image/` — needs image signing/verification (Cosign + Kyverno
   `verifyImages`) first
 - `service-account-abuse/` — needs per-workload RBAC review first

@@ -74,3 +74,20 @@ jobs:
       # them against a live API server.
       - name: Build dev-kind manifests
         run: ./kubectl kustomize clusters/dev-kind > /dev/null
+
+  renovate-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # A malformed renovate.json doesn't fail loudly — Renovate just stops
+      # picking up updates, so the pins quietly go stale with no signal.
+      # Pinned by digest as well as version: the validator's own accepted
+      # options change between releases (an older validator rejected
+      # managerFilePatterns, which current Renovate requires), so an
+      # unpinned image would make this check disagree with the Renovate
+      # that actually runs against the repo.
+      - name: Validate renovate.json
+        run: |
+          docker run --rm -v "$PWD:/work:ro" -w /work \
+            ghcr.io/renovatebot/renovate:44.30.3@sha256:d3d60a87bab73203327dd664f94f11e83091441ee4964c920662d83023446395 \
+            renovate-config-validator
