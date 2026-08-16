@@ -1,0 +1,46 @@
+# Helm values for the Cilium install in scripts/bootstrap-cilium.sh.
+#
+# Split out of the script once Gateway API pushed this past half a dozen
+# --set flags: the values are configuration and the script is procedure,
+# and each setting here needs a reason recorded next to it.
+#
+# k8sServiceHost/k8sServicePort are NOT here — they depend on the kind
+# node's address, so the script resolves them at install time.
+
+image:
+  # kind loads images into the node's own store; avoid re-pulling on every
+  # agent restart.
+  pullPolicy: IfNotPresent
+
+ipam:
+  # Use the PodCIDRs kind already assigns to nodes rather than running
+  # Cilium's own cluster-pool allocator.
+  mode: kubernetes
+
+operator:
+  # The chart defaults to 2 replicas with pod anti-affinity, so on this
+  # single-node cluster the second can never schedule and sits Pending.
+  replicas: 1
+
+hubble:
+  relay:
+    # The per-node Hubble server is on by default but only answers on its
+    # own node's socket. Relay aggregates those into one queryable API,
+    # which is what makes a cluster-wide traffic inventory possible.
+    # Deliberately no metrics (Prometheus cardinality with no question to
+    # answer yet) and no UI (the CLI in the agent image is enough).
+    enabled: true
+
+# Required by Gateway API, not chosen for performance: Cilium's Gateway
+# implementation only works with the kube-proxy replacement. kind is
+# configured with kubeProxyMode: none to match, so nothing else is
+# programming service load balancing.
+kubeProxyReplacement: true
+
+gatewayAPI:
+  enabled: true
+  hostNetwork:
+    # kind has no LoadBalancer implementation. Rather than adding MetalLB
+    # for a single-node dev cluster, the Envoy listeners bind to the node's
+    # network and kind's extraPortMappings forward host 80/443 to them.
+    enabled: true

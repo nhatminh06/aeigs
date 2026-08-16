@@ -1,8 +1,29 @@
 apiVersion: kind.x-k8s.io/v1alpha4
 kind: Cluster
 name: aegis-dev
+networking:
+  # Cilium replaces kindnet as the CNI. The node stays NotReady and CoreDNS
+  # stays Pending until scripts/bootstrap-cilium.sh runs — that gap is
+  # expected, not a failed cluster.
+  disableDefaultCNI: true
+  # kube-proxy is removed because Cilium's Gateway API requires
+  # kubeProxyReplacement=true, and running both would mean two things
+  # programming service load balancing. Cilium then needs an explicit
+  # API server address, which bootstrap-cilium.sh supplies.
+  kubeProxyMode: none
 nodes:
   - role: control-plane
+    # The Gateway's Envoy listeners run on the node's network
+    # (gatewayAPI.hostNetwork), so kind must forward these ports from the
+    # host for https://grafana.aegis.test to reach them. kind can only set
+    # this at creation time — changing it means recreating the cluster.
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
     # Pinned so a `kind` upgrade can't silently change the Kubernetes
     # baseline every control in this repo was tested against. v1.36.1 is
     # kind v0.32.0's own default node image — the combination kind
