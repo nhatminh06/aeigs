@@ -43,6 +43,14 @@ spec:
     # that's a disaster-recovery-phase problem, not solved here.
     postgresql:
       enabled: true
+      # The Bitnami chart ships its own NetworkPolicy that allows ingress
+      # to 5432 from any source. NetworkPolicies are additive, so leaving
+      # it enabled unions with networkpolicy.yaml and silently cancels the
+      # restriction out — verified: an unrelated demo-app pod still
+      # reached 5432 with both policies present. Disabled so the policy in
+      # this directory is the only one selecting these pods.
+      networkPolicy:
+        enabled: false
       auth:
         existingSecret: authentik-config
         secretKeys:

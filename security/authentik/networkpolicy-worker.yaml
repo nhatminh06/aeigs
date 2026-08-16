@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: authentik-worker-ingress
+  namespace: authentik
+spec:
+  # The Deployment's own selector.matchLabels, so this keeps selecting the
+  # worker across restarts and chart upgrades.
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: authentik
+      app.kubernetes.io/instance: authentik
+      app.kubernetes.io/component: worker
+  # Ingress listed with no rules below: deny all inbound. Nothing in the
+  # platform connects to the worker, established by four independent
+  # signals — no Service selects it, its probes are exec (`ak healthcheck`)
+  # rather than network, no ServiceMonitor/PodMonitor references it and
+  # Prometheus has zero authentik targets, and a Hubble window covering
+  # Flux reconciliation, a Grafana OIDC backend call and Authentik's own
+  # activity recorded no inbound flows except a deliberate test probe.
+  #
+  # This is not symmetry with the server and database policies. The worker
+  # listens on 9000 and 9300 and, because pod IPs are routable, both were
+  # reachable from an unrelated namespace even though no Service exists —
+  # so there is a real surface here to close, not just a future one.
+  #
+  # Egress is untouched: the worker's connections out to PostgreSQL and
+  # elsewhere are unaffected by an ingress-only policy.
+  policyTypes:
+    - Ingress

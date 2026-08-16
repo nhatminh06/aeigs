@@ -1,0 +1,50 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: authentik-server-ingress
+  namespace: authentik
+spec:
+  # The Deployment's own selector.matchLabels, so this keeps selecting the
+  # server across restarts and chart upgrades.
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: authentik
+      app.kubernetes.io/instance: authentik
+      app.kubernetes.io/component: server
+  policyTypes:
+    - Ingress
+  ingress:
+    # Grafana's OIDC backend calls. Its auth_url points at localhost:9000
+    # (a port-forward, so the browser never traverses this path), but
+    # token_url and api_url are cluster-internal Service DNS — those are
+    # made by the Grafana pod and are the only in-cluster ingress to the
+    # server observed apart from node-originated traffic.
+    #
+    # Port 9000 is the container port. The Service publishes 80 -> 9000,
+    # and NetworkPolicy matches the pod port, not the Service port.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: grafana
+              app.kubernetes.io/instance: kube-prometheus-stack
+      ports:
+        - protocol: TCP
+          port: 9000
+  # Not listed, deliberately:
+  #
+  # - authentik-worker: has no env pointing at the server and no observed
+  #   flows to :9000. Added only if evidence appears.
+  # - Prometheus: nothing scrapes the server's metrics port (9300); no
+  #   flows to it were seen.
+  # - The browser/user path: it arrives via kubectl port-forward from the
+  #   node, which Cilium treats as reserved:host and does not subject to
+  #   pod ingress policy. It is therefore not expressible here, and this
+  #   policy must not be read as controlling user access.
+  # - The Cilium Gateway. It cannot be written here: its Envoy proxy
+  #   reaches the backend under the reserved:ingress identity, which no
+  #   selector in this API can match. That one peer is expressed in
+  #   ciliumnetworkpolicy-server-gateway.yaml instead, and the two policies
+  #   union to exactly Grafana + the Gateway.

@@ -1,0 +1,42 @@
+# The Gateway exception to networkpolicy-server.yaml, not a replacement for
+# it. Portable NetworkPolicy stays the default for workload peers; this is
+# the one peer it cannot express.
+#
+# Cilium's Gateway implementation proxies through Envoy, and Envoy opens the
+# backend connection under the reserved:ingress identity (identity 8) rather
+# than as an ordinary pod. That identity is assigned by the proxy datapath,
+# so no podSelector, namespaceSelector or ipBlock selects it — an ipBlock
+# for the observed source address was tested and the traffic was still
+# dropped. Hubble shows both identities arriving from the same address:
+#
+#   10.244.0.241 (host)    -> authentik-server:9000  FORWARDED
+#   10.244.0.241 (ingress) -> authentik-server:9000  INGRESS DENIED
+#
+# Without this policy the SYNs are dropped, Envoy retries until it gives up,
+# and auth.aegis.test returns 503 with "reset reason: connection timeout".
+# This is specific to how this Cilium version presents Gateway backend
+# traffic; it is not a general statement about Gateway API.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: authentik-server-gateway-ingress
+  namespace: authentik
+spec:
+  # Same labels as the Deployment's selector.matchLabels, matching
+  # networkpolicy-server.yaml so both policies track the same pods.
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: authentik
+      app.kubernetes.io/instance: authentik
+      app.kubernetes.io/component: server
+  ingress:
+    # Only the Gateway peer. Grafana stays in networkpolicy-server.yaml so
+    # the portable rule remains the readable one, and 9000 only: the
+    # HTTPRoute targets the Service's port 80, which maps to container port
+    # 9000. 9443 and the 9300 metrics port are deliberately not opened.
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
