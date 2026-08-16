@@ -114,8 +114,18 @@ The original ALLOWED observation is kept above as the before-state.
 A trap worth remembering: the Bitnami PostgreSQL subchart ships its own
 NetworkPolicy allowing 5432 from any source. Because policies are
 additive, the restrictive policy had no effect until that one was disabled
-(`postgresql.networkPolicy.enabled: false`). The probe still reached the
-database with both policies present.
+(`postgresql.primary.networkPolicy.enabled: false`). The probe still reached
+the database with both policies present.
+
+The second half of that trap took longer to find. The setting was first
+written as `postgresql.networkPolicy.enabled`, one level too high — the
+chart tests `.Values.primary.networkPolicy.enabled`, so Helm accepted the
+value, ignored it, and still rendered the permissive policy. Nothing failed
+at the time because the policy had also been deleted by hand, so the
+boundary tested clean while its stated cause was doing nothing. The next
+chart upgrade re-rendered the policy and the lab immediately failed on 5432.
+A value that appears in `helm get values` has not necessarily been read by
+the template that was supposed to consume it.
 
 `demo-app -> authentik-server:80` was reachable after that milestone and
 has since been blocked too:

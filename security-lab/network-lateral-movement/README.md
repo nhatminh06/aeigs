@@ -30,7 +30,13 @@ One detail matters more than the policy itself: the Bitnami PostgreSQL
 subchart ships its **own** NetworkPolicy that allows 5432 `From: <any>`.
 NetworkPolicies are additive — the union of all matching policies is
 allowed — so that permissive policy silently cancelled this one out. It is
-disabled via `postgresql.networkPolicy.enabled: false` in the HelmRelease.
+disabled via `postgresql.primary.networkPolicy.enabled: false` in the
+HelmRelease. The `primary` level matters: the chart tests
+`.Values.primary.networkPolicy.enabled`, so setting it one level up is an
+unknown value that Helm accepts and ignores. Written that way first, the
+boundary passed this lab only because the rendered policy had been deleted
+by hand, and the next chart upgrade restored it — the lab then caught the
+regression by failing on 5432.
 Adding a restrictive policy is not enough if something else already allows
 the traffic.
 
