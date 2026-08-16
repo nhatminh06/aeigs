@@ -48,8 +48,15 @@ spec:
           # browser — cluster-internal Service DNS works here.
           token_url: http://authentik-server.authentik.svc.cluster.local/application/o/token/
           api_url: http://authentik-server.authentik.svc.cluster.local/application/o/userinfo/
-          # Local admin/password login stays available too — dev
-          # cluster, don't risk locking ourselves out over OAuth.
+        auth:
+          # Local admin/password login stays available too — dev cluster,
+          # don't risk locking ourselves out over OAuth.
+          #
+          # This belongs to [auth], not [auth.generic_oauth]. It was in the
+          # OAuth section before, where Grafana ignores it as an unknown
+          # key: the safeguard read as deliberate but did nothing, and
+          # matched intent only because false is also Grafana's default.
+          # Setting it here means changing it would actually take effect.
           disable_login_form: false
     prometheus:
       prometheusSpec:

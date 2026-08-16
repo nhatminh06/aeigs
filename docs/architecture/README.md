@@ -151,6 +151,36 @@ The age private key is the one input that cannot be rebuilt from Git.
   dependency update PR -> same CI gates -> human review -> main -> Flux
 ```
 
+None of these gates catch a Helm value that the chart never reads.
+
+## Configured Helm value is not consumed Helm value
+
+Helm accepts unknown values silently. A misplaced key is present in
+`helm get values`, survives every check above, and does nothing. This has
+happened twice here:
+
+- `postgresql.networkPolicy.enabled` sat one level above the key the chart
+  tests (`primary.networkPolicy.enabled`), so a permissive database
+  NetworkPolicy kept rendering.
+- `disable_login_form` sat in `[auth.generic_oauth]`, a section Grafana does
+  not read it from, so a login safeguard did nothing.
+
+Neither failed visibly. The first was masked by a hand-deleted resource; the
+second matched Grafana's default anyway. Schema validation does not close
+this: of the four charts in use only Cilium ships `values.schema.json`, and
+it accepted a deliberately bogus key in testing.
+
+So for a value that carries a security or reliability claim, verify against
+the pinned chart rather than the API server's acceptance of it:
+
+```
+  helm pull <repo>/<chart> --version <pinned> --untar
+  helm template <name> ./<chart> -f <values> | <check the resource changed>
+```
+
+Toggle the value both ways. The evidence is the rendered resource appearing
+or disappearing, not the value showing up in `helm get values`.
+
 ## Not present yet
 
 Namespace-wide default deny, egress policy, and L7 policy (only the three
