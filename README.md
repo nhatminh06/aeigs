@@ -40,11 +40,15 @@ Implemented:
   github.com/nhatminh06/aegis-api, served at https://api.aegis.test,
   scraped by Prometheus, network-policy-isolated — see "Owned workloads"
   below
+- aegis-api's software supply chain: Trivy image scan (both platforms),
+  SPDX SBOM per platform (Syft, attached to the digest as a Cosign
+  attestation), Cosign keyless signature from the release workflow's own
+  GitHub Actions OIDC identity, Kyverno `verifyImages` requiring that
+  signature before admitting the workload — see "Supply chain" below
 
 Planned:
-- software supply chain for aegis-api (Trivy image scan, Syft SBOM, Cosign,
-  Kyverno verifyImages, Flux Image Automation) — image is currently
-  unsigned and updated by hand
+- Flux Image Automation for aegis-api releases (selection stays manual for
+  now — see "Supply chain" below for why)
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
 - persistent home cluster
 - backup and disaster-recovery drills
@@ -53,11 +57,12 @@ Planned:
 ## Owned workloads
 
 ```
-github.com/nhatminh06/aegis-api  (source, tests, CI)
+github.com/nhatminh06/aegis-api  (source, tests, CI, release pipeline)
         |
-        | tag push v* -> multi-platform build (linux/amd64, linux/arm64)
+        | tag push v* -> staging build -> scan -> SBOM -> sign -> verify
+        |                -> ONLY THEN promote the same digest to vX.Y.Z
         v
-   ghcr.io/nhatminh06/aegis-api@sha256:...
+   ghcr.io/nhatminh06/aegis-api@sha256:...  (signed)
         |
         | image reference committed by hand to this repo (image
         | automation is a later milestone, not yet in place)
@@ -65,19 +70,46 @@ github.com/nhatminh06/aegis-api  (source, tests, CI)
    apps/aegis-api/  (this repository, Flux-owned)
         |
         v
-   Flux -> Kubernetes -> Gateway (api.aegis.test, trusted dev HTTPS)
+   Flux -> Kubernetes -> Kyverno verify-aegis-api-image (signature required)
+                       -> Gateway (api.aegis.test, trusted dev HTTPS)
                        -> Prometheus (ServiceMonitor)
                        -> NetworkPolicy + CiliumNetworkPolicy
-                       -> passes existing Kyverno policy unmodified
 ```
 
 A small Go API (`/healthz`, `/readyz`, `/metrics`, `/api/v1/info`,
 `/api/v1/work`) built specifically to exercise this operating model, not a
 demo of anything. Application CI never deploys directly — it only builds
 and publishes the image; this repository's Git state is what Flux
-reconciles. The image is currently unsigned; Kyverno does not require a
-signature yet, and that gap is the next planned milestone, not silently
-accepted forever.
+reconciles.
+
+## Supply chain
+
+`security/policies/verify-aegis-api-image.yaml` requires every `aegis-api`
+Pod's image to carry a valid Cosign keyless signature, issued for the
+specific identity `nhatminh06/aegis-api`'s `release.yml` workflow via a
+semver tag, before Kyverno admits it. Scoped to `namespace: aegis-api` +
+`app: aegis-api` only — no other workload on this platform is affected.
+
+This states precisely what is and isn't proven: it confirms which
+workflow produced the digest running in this cluster, not that the image
+is free of vulnerabilities (Trivy's job, upstream in the release
+pipeline, gated on HIGH/CRITICAL), not that the source is trustworthy
+under every compromise scenario, and not that a compromised GitHub
+account or the release workflow's own inputs couldn't produce a
+validly-signed image. Keyless verification depends on live connectivity
+to GHCR and Sigstore's Fulcio/Rekor at admission and background-scan
+time — documented, not silently assumed.
+
+Release promotion is a deliberate sequence, not a rebuild-and-hope: a tag
+push builds under a staging identity first, and only after Trivy, SBOM
+generation, signing, and signature verification all pass does the *same*
+digest — never a rebuild — get promoted to the semver tag. Published
+semver tags are immutable; a correction is always a new tag, never a
+moved one. Image selection into this repository's Git remains a manual,
+human step — Flux Image Automation is a deliberately separate future
+milestone, not implemented here, so that automation is added on top of a
+proven manual flow rather than replacing something never exercised by
+hand.
 
 ## Prerequisites (for local development)
 

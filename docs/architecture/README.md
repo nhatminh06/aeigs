@@ -214,11 +214,45 @@ NetworkPolicy path there already exists and is already tested. See
 `docs/network/traffic-inventory.md`'s "HTTPS and the OIDC path" section for
 the full request path and live evidence, including a real browser login.
 
+## Owned application supply chain
+
+```
+github.com/nhatminh06/aegis-api release.yml (tag push only)
+        |
+        |-- Trivy scan (linux/amd64 + linux/arm64), fails on HIGH/CRITICAL
+        |-- Syft SBOM per platform, SPDX JSON, attached as Cosign
+        |     attestations on the digest (durable, independent of the run)
+        |-- Cosign keyless signature on the exact digest (GitHub Actions
+        |     OIDC -> Fulcio short-lived cert -> Rekor), verified with
+        |     issuer + identity constraints in the same job
+        v
+   same digest promoted to the release tag — never a rebuild
+        |
+        v
+   apps/aegis-api/deployment.yaml (this repo, digest-pinned)
+        |
+        v
+   Kyverno verify-aegis-api-image
+        |-- namespace: aegis-api, app: aegis-api only
+        |-- requires issuer https://token.actions.githubusercontent.com
+        |-- requires subject matching .../workflows/release.yml@refs/tags/v*
+        v
+   admitted -> Kubernetes
+```
+
+Scoped narrowly on purpose: no other workload on this platform is
+affected, and this does not claim the image is vulnerability-free, that
+the source is trustworthy under every compromise scenario, or that a
+compromised GitHub account could not produce a validly-signed image.
+Verification depends on live connectivity to GHCR and Sigstore's
+Fulcio/Rekor — both at admission time and during Kyverno's background
+re-scan.
+
 ## Not present yet
 
-Namespace-wide default deny, egress policy, and L7 policy (only the three
-ingress boundaries above are enforced), image signing/verification, and
-any persistent cluster. The development CA is trusted only by clients that
-explicitly import it — this is not a publicly trusted certificate and must
-not be described as one. Nothing above should be read as implying those
-exist.
+Namespace-wide default deny, egress policy, and L7 policy (only the
+ingress boundaries above are enforced), Flux Image Automation (release
+selection into Git is a manual step), and any persistent cluster. The
+development CA is trusted only by clients that explicitly import it —
+this is not a publicly trusted certificate and must not be described as
+one. Nothing above should be read as implying those exist.
