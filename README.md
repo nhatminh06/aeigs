@@ -45,10 +45,13 @@ Implemented:
   attestation), Cosign keyless signature from the release workflow's own
   GitHub Actions OIDC identity, Kyverno `verifyImages` requiring that
   signature before admitting the workload — see "Supply chain" below
+- Flux Image Automation for aegis-api: a new signed release is discovered,
+  selected, and committed into this repository's Git desired state
+  automatically, with Kyverno's signature requirement as an independent
+  gate that does not trust ImagePolicy's selection — see "Owned workloads"
+  below
 
 Planned:
-- Flux Image Automation for aegis-api releases (selection stays manual for
-  now — see "Supply chain" below for why)
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
 - persistent home cluster
 - backup and disaster-recovery drills
@@ -64,13 +67,23 @@ github.com/nhatminh06/aegis-api  (source, tests, CI, release pipeline)
         v
    ghcr.io/nhatminh06/aegis-api@sha256:...  (signed)
         |
-        | image reference committed by hand to this repo (image
-        | automation is a later milestone, not yet in place)
         v
-   apps/aegis-api/  (this repository, Flux-owned)
+   ImageRepository/aegis-api  (scans GHCR, read-only)
         |
         v
-   Flux -> Kubernetes -> Kyverno verify-aegis-api-image (signature required)
+   ImagePolicy/aegis-api  (highest 0.1.x semver tag only —
+        |                  a compatibility range, not "always newest")
+        v
+   ImageUpdateAutomation/aegis-api  (commits the selected digest into
+        |                            apps/aegis-api/deployment.yaml,
+        |                            path-scoped, own writer credential —
+        |                            see docs/decisions/0012)
+        v
+   apps/aegis-api/  (this repository, Flux-owned — Git remains the
+        |            record of which release is desired)
+        v
+   Flux -> Kubernetes -> Kyverno verify-aegis-api-image (signature required,
+                          independent of ImagePolicy's selection)
                        -> Gateway (api.aegis.test, trusted dev HTTPS)
                        -> Prometheus (ServiceMonitor)
                        -> NetworkPolicy + CiliumNetworkPolicy
@@ -80,7 +93,16 @@ A small Go API (`/healthz`, `/readyz`, `/metrics`, `/api/v1/info`,
 `/api/v1/work`) built specifically to exercise this operating model, not a
 demo of anything. Application CI never deploys directly — it only builds
 and publishes the image; this repository's Git state is what Flux
-reconciles.
+reconciles, and Git state itself is now updated automatically for trusted
+releases rather than by hand.
+
+`ImagePolicy` and Kyverno are deliberately separate, proven independent
+controls, not just designed that way: a test `ImagePolicy` narrowed to a
+version range that could only select `v0.1.0` — a real published digest
+already confirmed unsigned — selected it without complaint, because
+`ImagePolicy` has no concept of trust. Kyverno denied that exact digest
+regardless. Widening `ImagePolicy`'s selection range can never skip
+Kyverno.
 
 ## Supply chain
 
@@ -105,11 +127,17 @@ push builds under a staging identity first, and only after Trivy, SBOM
 generation, signing, and signature verification all pass does the *same*
 digest — never a rebuild — get promoted to the semver tag. Published
 semver tags are immutable; a correction is always a new tag, never a
-moved one. Image selection into this repository's Git remains a manual,
-human step — Flux Image Automation is a deliberately separate future
-milestone, not implemented here, so that automation is added on top of a
-proven manual flow rather than replacing something never exercised by
-hand.
+moved one.
+
+Image selection into this repository's Git is now automated by Flux
+Image Automation, gated behind the same signature requirement: Kyverno
+verifies whatever `ImageUpdateAutomation` selects, independently, before
+admitting it — automating *which release Git records as desired* never
+automates *trusting* it. `ImageUpdateAutomation` authenticates through a
+dedicated `GitRepository`, not `GitRepository/flux-system` — see
+`docs/decisions/0012-image-automation-git-write-credential.md` for the
+credential itself, a fine-grained token scoped to only this repository's
+contents, restored off-cluster like the age key and the development CA.
 
 ## Prerequisites (for local development)
 
