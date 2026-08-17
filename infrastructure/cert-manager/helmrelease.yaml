@@ -1,0 +1,30 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: cert-manager
+      # v1.21 is the only currently supported line that lists Kubernetes
+      # 1.36 in its tested range (1.33-1.36); v1.20 stops at 1.35. This
+      # cluster runs 1.36.1, so the choice is compatibility, not recency.
+      version: "v1.21.1"
+      sourceRef:
+        kind: HelmRepository
+        name: jetstack
+        namespace: cert-manager
+  values:
+    crds:
+      # The chart defaults this to false, which installs the controllers
+      # without the CRDs they reconcile — Certificate and Issuer would be
+      # unknown types and the gateway Kustomization would fail to apply.
+      # Nothing else here installs them, so Flux has to.
+      enabled: true
+    # Deliberately nothing else. Gateway API support is a separate feature
+    # gate and is not enabled: this repository creates Certificate
+    # resources explicitly, so cert-manager never needs to read Gateway
+    # objects. Replica counts, resources and security contexts stay at
+    # chart defaults because no measurement here justifies overriding them.
