@@ -281,6 +281,33 @@ either way — but it is no longer how this platform is normally reached.
 It remains useful strictly as a debug/recovery fallback when the Gateway
 itself is the thing being changed.
 
+## aegis-api ingress map
+
+The first user-owned application. Same two-policy split as Authentik's
+server: a portable `NetworkPolicy` for the workload peer, a
+`CiliumNetworkPolicy` for the Gateway peer.
+
+```
+| Source                          | Verdict (before policy) | Verdict (after policy)      |
+|----------------------------------|--------------------------|------------------------------|
+| Gateway (reserved:ingress)       | FORWARDED                | L3-L4 INGRESS ALLOWED (CNP)  |
+| observability/prometheus (scrape)| FORWARDED                | L3-L4 INGRESS ALLOWED (KNP)  |
+| demo-app/attacker-probe (unrelated)| FORWARDED (nc: open)   | Policy denied DROPPED        |
+```
+
+Real evidence, not inferred from the manifests:
+
+```
+10.244.0.241 (ingress) -> aegis-api:8080  http-request FORWARDED
+  (HTTP/1.1 GET https://api.aegis.test/api/v1/work?value=10)
+
+observability/prometheus-...-0 -> aegis-api:8080  to-endpoint FORWARDED
+
+demo-app/attacker-probe:35161 -> aegis-api:8080  (no policy) FORWARDED — nc reported "open"
+demo-app/attacker-probe2:32797 -> aegis-api:8080  policy-verdict:none INGRESS DENIED
+  Policy denied DROPPED
+```
+
 ## Unknowns
 
 - Only single-node behaviour is observed. `Connected Nodes: 1/1` is

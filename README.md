@@ -36,13 +36,48 @@ Implemented:
 - CI: Gitleaks, Trivy config, Kyverno policy tests, Kustomize build validation
 - Renovate dependency discovery (built-in managers; no automerge)
 - security-lab: 5 documented attack scenarios (security-lab/)
+- first application actually owned by this project:
+  github.com/nhatminh06/aegis-api, served at https://api.aegis.test,
+  scraped by Prometheus, network-policy-isolated — see "Owned workloads"
+  below
 
 Planned:
+- software supply chain for aegis-api (Trivy image scan, Syft SBOM, Cosign,
+  Kyverno verifyImages, Flux Image Automation) — image is currently
+  unsigned and updated by hand
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
-- container build/scan/SBOM/signing (needs a real image-building app repo first)
 - persistent home cluster
 - backup and disaster-recovery drills
 ```
+
+## Owned workloads
+
+```
+github.com/nhatminh06/aegis-api  (source, tests, CI)
+        |
+        | tag push v* -> multi-platform build (linux/amd64, linux/arm64)
+        v
+   ghcr.io/nhatminh06/aegis-api@sha256:...
+        |
+        | image reference committed by hand to this repo (image
+        | automation is a later milestone, not yet in place)
+        v
+   apps/aegis-api/  (this repository, Flux-owned)
+        |
+        v
+   Flux -> Kubernetes -> Gateway (api.aegis.test, trusted dev HTTPS)
+                       -> Prometheus (ServiceMonitor)
+                       -> NetworkPolicy + CiliumNetworkPolicy
+                       -> passes existing Kyverno policy unmodified
+```
+
+A small Go API (`/healthz`, `/readyz`, `/metrics`, `/api/v1/info`,
+`/api/v1/work`) built specifically to exercise this operating model, not a
+demo of anything. Application CI never deploys directly — it only builds
+and publishes the image; this repository's Git state is what Flux
+reconciles. The image is currently unsigned; Kyverno does not require a
+signature yet, and that gap is the next planned milestone, not silently
+accepted forever.
 
 ## Prerequisites (for local development)
 
