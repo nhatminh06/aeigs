@@ -18,10 +18,12 @@ example, expected defense, test procedure, observed result, remediation.
 - [`leaked-secret/`](leaked-secret/) — Gitleaks secret scanning
 - [`network-lateral-movement/`](network-lateral-movement/) — NetworkPolicy
   protecting the Authentik database
+- [`unsigned-image/`](unsigned-image/) — Kyverno `verifyImages` signature
+  admission for aegis-api
+- [`image-automation/`](image-automation/) — Flux Image Automation digest
+  invariant for aegis-api
 
 ## Planned (not yet backed by a control, so not labs yet)
 
 - `rbac-escalation/` — needs least-privilege RBAC conventions first
-- `unsigned-image/` — needs image signing/verification (Cosign + Kyverno
-  `verifyImages`) first
 - `service-account-abuse/` — needs per-workload RBAC review first
