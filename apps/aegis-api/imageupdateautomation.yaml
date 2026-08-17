@@ -15,10 +15,10 @@ metadata:
   name: aegis-api
   namespace: aegis-api
 spec:
-  # INCIDENT: suspended to stop automation from immediately re-selecting
-  # v0.1.4 and overwriting the manual rollback below. See
-  # docs/runbooks/aegis-api-bad-release.md for resume criteria.
-  suspend: true
+  # Resumed after v0.1.5 (fix + regression guard) independently passed
+  # Trivy, SBOM, Cosign verification, and a Kyverno dry-run — see
+  # docs/runbooks/aegis-api-bad-release.md, "Resume criteria."
+  suspend: false
   interval: 5m
   sourceRef:
     kind: GitRepository
