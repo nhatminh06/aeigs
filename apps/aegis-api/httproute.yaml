@@ -11,6 +11,20 @@ spec:
   hostnames:
     - api.aegis.test
   rules:
-    - backendRefs:
+    # Explicit public paths only. /metrics is deliberately not matched
+    # here, so it 404s at the Gateway the same way an unknown hostname
+    # does — Prometheus still reaches it directly through the Service via
+    # the ServiceMonitor, which doesn't go through the Gateway at all.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /healthz
+        - path:
+            type: PathPrefix
+            value: /readyz
+        - path:
+            type: PathPrefix
+            value: /api/v1/
+      backendRefs:
         - name: aegis-api
           port: 80
