@@ -229,8 +229,22 @@ github.com/nhatminh06/aegis-api release.yml (tag push only)
    same digest promoted to the release tag — never a rebuild
         |
         v
-   apps/aegis-api/deployment.yaml (this repo, digest-pinned)
+   ImageRepository/aegis-api  (scans GHCR, no write access)
         |
+        v
+   ImagePolicy/aegis-api  (semver 0.1.x only; sha-* staging tags,
+        |                  v0.2.0+ ignored — a compatibility range,
+        |                  not "always newest")
+        v
+   ImageUpdateAutomation/aegis-api  (Setters marker in
+        |                            apps/aegis-api/deployment.yaml)
+        v
+   commit to this repo's main, path apps/aegis-api only —
+   via GitRepository/aegis-api-image-writer, NOT GitRepository/flux-system
+        |
+        v
+   apps/aegis-api/deployment.yaml (this repo, digest-pinned; Git remains
+        |                          the record of which release is desired)
         v
    Kyverno verify-aegis-api-image
         |-- namespace: aegis-api, app: aegis-api only
@@ -248,11 +262,30 @@ Verification depends on live connectivity to GHCR and Sigstore's
 Fulcio/Rekor — both at admission time and during Kyverno's background
 re-scan.
 
+`ImagePolicy` and Kyverno are independent controls answering different
+questions — "which release should Git select" versus "is the selected
+artifact signed by the trusted producer" — proven independent, not just
+asserted: a test `ImagePolicy` was pointed at a narrowed version range
+that could only select `v0.1.0`, a real published digest already
+confirmed unsigned, and it selected it without complaint. Kyverno denied
+that exact digest regardless. `ImagePolicy` has no concept of trust; it
+is not supposed to, and nothing about widening its selection range can
+skip Kyverno.
+
+`ImageUpdateAutomation` has no credential field of its own — it
+authenticates through whichever `GitRepository` its `sourceRef` names.
+Reusing `GitRepository/flux-system` (used by every Kustomization above)
+would have put a write-capable credential on the object this platform
+deliberately keeps anonymous — see `docs/decisions/0009-minimize-runtime-git-credentials.md`.
+A second, dedicated `GitRepository/aegis-api-image-writer` exists for
+exactly this — see `docs/decisions/0012-image-automation-git-write-credential.md`
+for the credential itself, its scope, and why it is stored off-cluster
+rather than SOPS-encrypted into the repository it can write to.
+
 ## Not present yet
 
 Namespace-wide default deny, egress policy, and L7 policy (only the
-ingress boundaries above are enforced), Flux Image Automation (release
-selection into Git is a manual step), and any persistent cluster. The
+ingress boundaries above are enforced), and any persistent cluster. The
 development CA is trusted only by clients that explicitly import it —
 this is not a publicly trusted certificate and must not be described as
 one. Nothing above should be read as implying those exist.
