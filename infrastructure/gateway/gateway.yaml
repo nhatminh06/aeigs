@@ -58,3 +58,18 @@ spec:
           selector:
             matchLabels:
               aegis.dev/gateway-routes: "true"
+    - name: https-api
+      protocol: HTTPS
+      port: 443
+      hostname: api.aegis.test
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: api-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              aegis.dev/gateway-routes: "true"

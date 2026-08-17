@@ -5,5 +5,6 @@ resources:
   - issuer.yaml
   - certificate-grafana.yaml
   - certificate-auth.yaml
+  - certificate-api.yaml
   - gateway.yaml
   - httproute-redirect.yaml

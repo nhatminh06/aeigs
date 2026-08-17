@@ -1,0 +1,21 @@
+# Companion to certificate-grafana.yaml, which records why these are
+# separate certificates rather than one SAN certificate.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: api-tls
+  namespace: gateway
+spec:
+  secretName: api-tls
+  duration: 720h
+  renewBefore: 240h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  dnsNames:
+    - api.aegis.test
+  issuerRef:
+    name: aegis-dev-ca
+    kind: Issuer
+    group: cert-manager.io

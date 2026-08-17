@@ -20,6 +20,7 @@ spec:
   hostnames:
     - grafana.aegis.test
     - auth.aegis.test
+    - api.aegis.test
   rules:
     - filters:
         - type: RequestRedirect
