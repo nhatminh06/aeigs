@@ -282,10 +282,61 @@ exactly this — see `docs/decisions/0012-image-automation-git-write-credential.
 for the credential itself, its scope, and why it is stored off-cluster
 rather than SOPS-encrypted into the repository it can write to.
 
+## Reliability feedback loop
+
+The supply chain above proves an artifact's provenance and identity, not
+its runtime correctness — a signature says a release came from the
+trusted pipeline, not that the code inside it is good. That gap is closed
+by Prometheus, and recovery goes back through Git, manually:
+
+```
+aegis-api release (passes tests, Trivy, SBOM, Cosign, Kyverno)
+        |
+        v
+Flux Image Automation deploys it (same path as above)
+        |
+        v
+application-level regression, invisible to Kubernetes/Kyverno/Cilium —
+Pod stays Ready, liveness/readiness stay healthy, Kyverno stays satisfied
+        |
+        v
+Prometheus (aegis_api:request_success_ratio / http_5xx_ratio /
+             http_request_duration_p95_seconds, apps/aegis-api/prometheusrule.yaml)
+        |
+        v
+alert fires -> operator diagnoses (rules out network via Hubble, rules
+        |       out supply chain via Cosign/Kyverno re-check) -> confirms
+        |       the regression is in the application itself
+        v
+Git commit: suspend ImageUpdateAutomation + roll deployment.yaml back
+   to the known-good digest — together, one commit, to avoid a race
+   against automation's own write path
+        |
+        v
+Flux reconciles the rollback; SLO recovers
+        |
+        v
+root cause fixed + regression guard added -> new release -> independently
+   verified (Trivy/SBOM/Cosign/Kyverno) -> automation resumed through Git
+```
+
+This is a manual, evidence-based loop by design — see
+`reliability-lab/aegis-api-slo/` and
+`docs/runbooks/aegis-api-bad-release.md` for the incident this proved it
+against. There is deliberately no automatic rollback controller: the
+thresholds above are development-lab objectives sized from one measured
+baseline, not validated enough to be trusted to change production state
+unattended.
+
 ## Not present yet
 
 Namespace-wide default deny, egress policy, and L7 policy (only the
 ingress boundaries above are enforced), and any persistent cluster. The
 development CA is trusted only by clients that explicitly import it —
 this is not a publicly trusted certificate and must not be described as
-one. Nothing above should be read as implying those exist.
+one. Automatic rollback, progressive delivery/canary release, or any
+controller that changes production state based on the SLO alerts above
+— rollback today is a deliberate, evidence-based human action through
+Git. Alertmanager delivery is not installed; alert *evaluation* runs in
+Prometheus regardless. Nothing above should be read as implying those
+exist.

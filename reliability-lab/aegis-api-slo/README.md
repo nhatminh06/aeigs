@@ -112,5 +112,14 @@ suspending `ImageUpdateAutomation` and rolling `deployment.yaml` back to
 the known-good `v0.1.3` digest; no `kubectl` mutation.
 
 `v0.1.4`'s tag, image, and signature remain untouched as incident
-evidence. Root cause fix and automation resume: see the runbook's
-"Resume criteria" section, updated once `v0.1.5` ships.
+evidence.
+
+Root cause fixed as `v0.1.5`: reverted `fibonacci` to its iterative
+form and added `TestFibonacciStaysLinear`, a regression guard bounding
+`fibonacci(40)`'s wall-clock cost generously (100ms against an actual
+cost of microseconds) so it only trips on a genuine complexity-class
+regression. `v0.1.5` independently passed Trivy, SBOM, Cosign
+verification, and a Kyverno dry-run before automation was resumed
+through Git; `ImageUpdateAutomation` then generated its own commit
+(`v0.1.3 → v0.1.5`) and the same load pattern confirmed p95 back to
+~4.75ms with all three alerts `inactive`.
