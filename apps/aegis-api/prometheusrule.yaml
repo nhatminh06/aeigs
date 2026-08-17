@@ -1,0 +1,62 @@
+# Aegis development service objectives for aegis-api — learning/operational
+# thresholds derived from a measured healthy baseline on v0.1.3
+# (reliability-lab/aegis-api-slo/README.md), not a production SLA. Every
+# expression is scoped to path=~"/api/v1/.*" deliberately: /healthz,
+# /readyz, and /metrics are instrumented by the same middleware and would
+# otherwise dilute the user-facing request population with probe traffic.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: aegis-api
+  namespace: aegis-api
+  labels:
+    # Matches kube-prometheus-stack's default ruleSelector, same
+    # convention already used by servicemonitor.yaml for discovery.
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: aegis-api.rules
+      interval: 30s
+      rules:
+        - record: aegis_api:request_success_ratio:5m
+          expr: |
+            sum(rate(aegis_api_http_requests_total{path=~"/api/v1/.*",status!~"5.."}[5m]))
+            /
+            sum(rate(aegis_api_http_requests_total{path=~"/api/v1/.*"}[5m]))
+        - record: aegis_api:http_5xx_ratio:5m
+          expr: |
+            sum(rate(aegis_api_http_requests_total{path=~"/api/v1/.*",status=~"5.."}[5m]))
+            /
+            sum(rate(aegis_api_http_requests_total{path=~"/api/v1/.*"}[5m]))
+        - record: aegis_api:http_request_duration_p95_seconds:5m
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(aegis_api_http_request_duration_seconds_bucket{path=~"/api/v1/.*"}[5m])) by (le)
+            )
+    - name: aegis-api.alerts
+      interval: 30s
+      rules:
+        - alert: AegisApiLowSuccessRatio
+          expr: aegis_api:request_success_ratio:5m < 0.99
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "aegis-api success ratio below 99% (development lab objective)"
+            description: "aegis_api:request_success_ratio:5m has been below 0.99 for 2m. Current value: {{ $value | printf \"%.4f\" }}."
+        - alert: AegisApiHighErrorRate
+          expr: aegis_api:http_5xx_ratio:5m > 0.01
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "aegis-api 5xx ratio above 1% (development lab objective)"
+            description: "aegis_api:http_5xx_ratio:5m has been above 0.01 for 2m. Current value: {{ $value | printf \"%.4f\" }}."
+        - alert: AegisApiHighLatency
+          expr: aegis_api:http_request_duration_p95_seconds:5m > 0.1
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "aegis-api p95 latency above 100ms (development lab objective)"
+            description: "aegis_api:http_request_duration_p95_seconds:5m has been above 0.1s for 2m. Current value: {{ $value | printf \"%.4f\" }}s."

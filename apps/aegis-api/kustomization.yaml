@@ -6,6 +6,7 @@ resources:
   - service.yaml
   - httproute.yaml
   - servicemonitor.yaml
+  - prometheusrule.yaml
   - networkpolicy.yaml
   - ciliumnetworkpolicy-gateway.yaml
   - imagerepository.yaml
