@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unrelated-pod
+  namespace: aegis-api
+  labels:
+    app: some-debug-tool
+spec:
+  containers:
+    - name: busybox
+      image: busybox:1.36.1

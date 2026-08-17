@@ -1,0 +1,69 @@
+# Requires a valid Cosign keyless signature from this project's own
+# aegis-api release workflow before an aegis-api image is admitted.
+#
+# Trust statement, precisely: Aegis accepts aegis-api images only when the
+# referenced digest carries a Sigstore/Cosign signature whose certificate
+# was issued by GitHub Actions' OIDC issuer for the specific identity
+# nhatminh06/aegis-api's release.yml workflow, triggered by a semver tag.
+# It does not claim the image is vulnerability-free (that is Trivy's job,
+# upstream in the release pipeline, not this policy's), that the source is
+# trustworthy under every compromise scenario, or that a compromised
+# GitHub account or the release workflow itself couldn't produce a
+# validly-signed image — keyless signing proves which workflow signed it,
+# not that the workflow's inputs were themselves trustworthy.
+#
+# The identity below was not written from documentation alone: it is the
+# literal Subject Alternative Name and OIDC issuer observed by decoding
+# the real Fulcio certificate issued for the v0.1.1 release
+# (github.com/nhatminh06/aegis-api, tag v0.1.1) with openssl, then
+# confirmed by both `cosign verify` and a live server-side Kyverno
+# admission test before this policy was added to Git.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-aegis-api-image
+spec:
+  validationFailureAction: Enforce
+  # This rule matches on Pod labels/namespace only — no AdmissionReview-only
+  # fields like request.userInfo or Roles/Subjects — so background scanning
+  # is supported and left on, matching this repo's other policies. It also
+  # means Kyverno periodically re-verifies the live Pod's signature against
+  # Sigstore, not only at admission time.
+  background: true
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-aegis-api-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - aegis-api
+              # Scoped to the actual workload, not every Pod in the
+              # namespace — a debug/diagnostic pod without this label is
+              # unaffected, and this policy has no opinion about it.
+              selector:
+                matchLabels:
+                  app: aegis-api
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/nhatminh06/aegis-api*"
+          # The Deployment already pins an exact digest (see
+          # apps/aegis-api/deployment.yaml); Kyverno resolving a tag to a
+          # digest itself would be a second, redundant source of that
+          # binding. mutateDigest defaults to true in this Kyverno
+          # version, so it is explicitly disabled to preserve the
+          # digest already declared in Git as the one source of truth for
+          # which build is running.
+          mutateDigest: false
+          verifyDigest: true
+          required: true
+          attestors:
+            - count: 1
+              entries:
+                - keyless:
+                    issuer: "https://token.actions.githubusercontent.com"
+                    subjectRegExp: "^https://github\\.com/nhatminh06/aegis-api/\\.github/workflows/release\\.yml@refs/tags/v[0-9]+\\.[0-9]+\\.[0-9]+$"
+                    rekor:
+                      url: https://rekor.sigstore.dev

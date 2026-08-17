@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - disallow-privileged-containers.yaml
   - disallow-latest-tag.yaml
+  - verify-aegis-api-image.yaml

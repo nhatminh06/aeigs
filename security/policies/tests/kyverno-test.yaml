@@ -16,10 +16,21 @@ metadata:
 # docs/decisions/0008-kyverno-image-tag-parsed-matching.md. Keep both: this
 # suite for rule-logic regressions, live testing for admission-routing and
 # operation-handling regressions. Neither alone is sufficient.
+#
+# verify-aegis-api-image is a further split, specific to verifyImages
+# rules: `kyverno test` was confirmed (not assumed) to make a real network
+# call to the registry and Sigstore for this rule — it correctly failed
+# against a known-unsigned digest, which a purely offline evaluation
+# could not do. That is real signature verification, not something to
+# fake here. So only the namespace/label scoping fixture below is static;
+# actual signature pass/fail (signed, unsigned, wrong signer, wrong
+# digest) is exercised live in security-lab/unsigned-image/.
 policies:
   - ../disallow-latest-tag.yaml
   - ../disallow-privileged-containers.yaml
+  - ../verify-aegis-api-image.yaml
 resources:
+  - valid-unrelated-pod-excluded.yaml
   - valid-latest.yaml
   - invalid-latest.yaml
   - invalid-latest-notag.yaml
@@ -164,3 +175,10 @@ results:
       - test-ephemeralcontainer-privileged
     kind: Pod
     result: fail
+  # --- verify-aegis-api-image: scoping only, no signature involved ---
+  - policy: verify-aegis-api-image
+    rule: verify-aegis-api-signature
+    resources:
+      - unrelated-pod
+    kind: Pod
+    result: skip
