@@ -28,9 +28,14 @@ spec:
       containers:
         - name: aegis-api
           # github.com/nhatminh06/aegis-api v0.1.2, multi-platform
-          # (linux/amd64, linux/arm64). Pinned by digest, not tag — see
-          # CLAUDE.md's "prefer digests where it matters" for anything
-          # deployed, which a live workload is. This digest passed a
+          # (linux/amd64, linux/arm64). Pull resolution is strictly by
+          # digest regardless of the tag alongside it — the tag is what
+          # lets Renovate track updates at all: given only a bare digest
+          # with no tag, it has no version lineage to check against and
+          # fails with "Could not determine new digest for update" (see
+          # bootstrap/kind/cluster.yaml for the same tag@digest pattern).
+          # This is still exactly what CLAUDE.md's "prefer digests where
+          # it matters" asks for. This digest passed a
           # Trivy scan on both platforms and carries a Cosign keyless
           # signature from this repository's release workflow — see
           # security/policies/verify-aegis-api-image.yaml, which requires
@@ -41,7 +46,7 @@ spec:
           # Kyverno version cannot verify for a keyless attestor — a real
           # gap found by testing admission against it live, not assumed.
           # v0.1.2 is the same pipeline with Cosign pinned to v2.6.5.
-          image: ghcr.io/nhatminh06/aegis-api@sha256:7e025135b6bbcfd8f895808472539674966a46f8c044424b6664e57297845b0f
+          image: ghcr.io/nhatminh06/aegis-api:v0.1.2@sha256:7e025135b6bbcfd8f895808472539674966a46f8c044424b6664e57297845b0f
           ports:
             - name: http
               containerPort: 8080
