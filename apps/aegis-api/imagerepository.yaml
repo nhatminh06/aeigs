@@ -1,0 +1,19 @@
+# Observation only: this and imagepolicy.yaml discover and select a
+# release. Neither writes anything — that is imageupdateautomation.yaml's
+# job, and it stays a separate step (see clusters/dev-kind/flux-system/
+# image-automation.yaml) so selection can be proven correct before any
+# Git write capability is exercised.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: aegis-api
+  namespace: aegis-api
+spec:
+  image: ghcr.io/nhatminh06/aegis-api
+  # Personal dev platform, not a race to deploy the newest tag the moment
+  # it exists — 5m keeps registry polling light without making a release
+  # wait an unreasonable time to be noticed.
+  interval: 5m
+  # No secretRef: the GHCR package under this public repository is
+  # anonymously pullable, confirmed earlier by fetching its manifest with
+  # only an anonymous registry token.

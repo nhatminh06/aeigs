@@ -1,0 +1,33 @@
+# Selects the highest 0.1.x release tag, ignoring everything else the
+# ImageRepository sees: sha-<commit> staging tags, and any v0.2.0+ release
+# that would cross a compatibility boundary this project hasn't
+# deliberately opted into yet. Widening the range is a conscious future
+# change, not something a routine release should trigger silently.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: aegis-api
+  namespace: aegis-api
+  labels:
+    # Referenced by ImageUpdateAutomation's policySelector — scopes that
+    # automation to exactly this policy, not every ImagePolicy that might
+    # ever exist in this namespace.
+    app.kubernetes.io/name: aegis-api
+spec:
+  imageRepositoryRef:
+    name: aegis-api
+  filterTags:
+    # Exact semver release tags only — v0.1.2, not sha-<commit>, not
+    # v0.1.2-rc1, not anything the release pipeline's staging identity
+    # produces.
+    pattern: '^v(?P<version>[0-9]+\.[0-9]+\.[0-9]+)$'
+    extract: "$version"
+  policy:
+    semver:
+      range: ">=0.1.0 <0.2.0"
+  # Release tags are immutable by this project's own contract (see
+  # aegis-api's README: "published semver tags are immutable"), so there
+  # is nothing for a digest to drift to once a tag has been observed.
+  # IfNotPresent records the digest once instead of Flux re-resolving an
+  # unchanged tag's digest on every interval.
+  digestReflectionPolicy: IfNotPresent

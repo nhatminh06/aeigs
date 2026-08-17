@@ -1,0 +1,71 @@
+# A second, dedicated GitRepository — not GitRepository/flux-system (see
+# gotk-sync.yaml). ImageUpdateAutomation has no credential field of its
+# own: it authenticates entirely through whichever GitRepository its
+# sourceRef points at. Reusing flux-system's own GitRepository here would
+# mean putting a write-capable credential on the exact object every
+# Kustomization already reads through, undoing the anonymous-read
+# property docs/decisions/0009-minimize-runtime-git-credentials.md
+# established. This object exists so that credential lives nowhere near
+# the read path.
+#
+# The credential itself is a fine-grained GitHub PAT, scoped to only this
+# repository with Contents: Read and write — nothing else — stored as
+# Secret/aegis-api-image-writer, restored off-cluster via
+# scripts/bootstrap-image-writer.sh, the same restore-not-regenerate
+# pattern as the SOPS age key and the development CA. See
+# docs/decisions/0012-image-automation-git-write-credential.md.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: aegis-api-image-writer
+  namespace: flux-system
+spec:
+  interval: 5m
+  url: https://github.com/nhatminh06/aeigs.git
+  ref:
+    branch: main
+  secretRef:
+    name: aegis-api-image-writer
+---
+# Starts suspended. A suspended automation still creates the resource and
+# lets its Git checkout/credential be inspected before it is ever allowed
+# to write, matching the same staged rollout this project used for every
+# other admission-affecting control.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageUpdateAutomation
+metadata:
+  name: aegis-api
+  namespace: flux-system
+spec:
+  suspend: true
+  interval: 5m
+  sourceRef:
+    kind: GitRepository
+    name: aegis-api-image-writer
+  # Only aegis-api's own ImagePolicy is eligible — a future ImagePolicy
+  # for another workload does not silently become writable by this
+  # automation just by existing.
+  policySelector:
+    matchLabels:
+      app.kubernetes.io/name: aegis-api
+  update:
+    path: ./apps/aegis-api
+    strategy: Setters
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      # Named as a controller, not a person — this did not write itself
+      # by human hand, and the commit history should say so plainly.
+      author:
+        email: flux-image-automation@aegis.local
+        name: Aegis Flux Image Automation
+      messageTemplate: |
+        Update aegis-api image
+
+        {{ range $image, $change := .Changed.Changes -}}
+        {{ $image }}: {{ $change.OldValue }} -> {{ $change.NewValue }}
+        {{ end -}}
+    push:
+      branch: main
