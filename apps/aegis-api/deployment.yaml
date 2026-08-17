@@ -46,7 +46,7 @@ spec:
           # Kyverno version cannot verify for a keyless attestor — a real
           # gap found by testing admission against it live, not assumed.
           # v0.1.2 is the same pipeline with Cosign pinned to v2.6.5.
-          image: ghcr.io/nhatminh06/aegis-api:v0.1.3@sha256:b0845756fb57e3e37083da69b181df5dd89eca804c48dcd016e3c1a8df54ab4c # {"$imagepolicy": "aegis-api:aegis-api"}
+          image: ghcr.io/nhatminh06/aegis-api:v0.1.4@sha256:819ffad1732a7ad0b84a5a9cfeeba04df6db276571dd68052d31307edeffad2e # {"$imagepolicy": "aegis-api:aegis-api"}
           ports:
             - name: http
               containerPort: 8080
