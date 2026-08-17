@@ -15,7 +15,10 @@ metadata:
   name: aegis-api
   namespace: aegis-api
 spec:
-  suspend: false
+  # INCIDENT: suspended to stop automation from immediately re-selecting
+  # v0.1.4 and overwriting the manual rollback below. See
+  # docs/runbooks/aegis-api-bad-release.md for resume criteria.
+  suspend: true
   interval: 5m
   sourceRef:
     kind: GitRepository
