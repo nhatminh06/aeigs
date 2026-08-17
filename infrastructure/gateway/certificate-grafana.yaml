@@ -1,0 +1,29 @@
+# One certificate per hostname rather than a single SAN certificate covering
+# both. They are separate listeners serving separate components, so a
+# reissue or a mistake in one should not touch the other. No wildcard: two
+# names are known and enumerable, and a *.aegis.test certificate would be
+# valid for hostnames this platform does not serve.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana-tls
+  namespace: gateway
+spec:
+  secretName: grafana-tls
+  # Short for a development platform on purpose: it makes renewal something
+  # this repository exercises rather than something it assumes. cert-manager
+  # renews at two thirds of the lifetime.
+  duration: 720h
+  renewBefore: 240h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    # Rotate the key on renewal, not just the certificate. The default
+    # reuses the existing key, which makes a renewal test prove less.
+    rotationPolicy: Always
+  dnsNames:
+    - grafana.aegis.test
+  issuerRef:
+    name: aegis-dev-ca
+    kind: Issuer
+    group: cert-manager.io

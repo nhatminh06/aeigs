@@ -7,6 +7,10 @@ spec:
   parentRefs:
     - name: aegis
       namespace: gateway
+      # Pinned to the HTTPS listener. Without sectionName this route
+      # would also attach to the HTTP listener and compete with the
+      # redirect route that now owns port 80.
+      sectionName: https-grafana
   hostnames:
     - grafana.aegis.test
   rules:

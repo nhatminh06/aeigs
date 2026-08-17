@@ -6,10 +6,9 @@ metadata:
 spec:
   gatewayClassName: cilium
   listeners:
-    # HTTP only for now. TLS is added once the development CA exists and a
-    # client has been shown to reject, then accept, the certificate — doing
-    # both at once would make a routing failure and a trust failure look
-    # identical.
+    # Kept alongside HTTPS rather than removed. During the TLS migration a
+    # working plaintext path is what distinguishes a routing failure from a
+    # trust failure; once HTTPS was proven it became the redirect source.
     - name: http
       protocol: HTTP
       port: 80
@@ -19,6 +18,41 @@ spec:
         # other namespaces. Restricted to namespaces carrying the label
         # below rather than All, so a route cannot be attached from an
         # unrelated namespace.
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              aegis.dev/gateway-routes: "true"
+    # One HTTPS listener per hostname, each with its own certificate. A
+    # single wildcard listener would work, but it would also mean one
+    # certificate for every future hostname and one blast radius for all of
+    # them. certificateRefs resolve to Secrets written by cert-manager from
+    # the Certificate resources in this directory.
+    - name: https-grafana
+      protocol: HTTPS
+      port: 443
+      hostname: grafana.aegis.test
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: grafana-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              aegis.dev/gateway-routes: "true"
+    - name: https-auth
+      protocol: HTTPS
+      port: 443
+      hostname: auth.aegis.test
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: auth-tls
+      allowedRoutes:
         namespaces:
           from: Selector
           selector:

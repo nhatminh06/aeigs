@@ -1,0 +1,16 @@
+# Namespaced, not a ClusterIssuer: every certificate this platform issues is
+# consumed by the Gateway in this namespace, and a ClusterIssuer would make
+# the development signing key usable from anywhere in the cluster for no
+# current benefit. Revisit if certificates are ever needed elsewhere.
+#
+# The CA key is not in Git. scripts/bootstrap-pki.sh restores it into the
+# Secret below from material held outside the repository — see
+# docs/decisions/0011-development-ca-trust-root.md.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: aegis-dev-ca
+  namespace: gateway
+spec:
+  ca:
+    secretName: aegis-dev-ca

@@ -9,6 +9,11 @@ spec:
   prune: true
   wait: true
   timeout: 2m
+  # This directory contains Issuer and Certificate resources, so the CRDs
+  # installed by the cert-manager HelmRelease have to exist before it can
+  # apply at all.
+  dependsOn:
+    - name: cert-manager
   sourceRef:
     kind: GitRepository
     name: flux-system

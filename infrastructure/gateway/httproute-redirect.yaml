@@ -1,0 +1,30 @@
+# Owns port 80 for both hostnames and sends everything to HTTPS. Uses the
+# standard Gateway API RequestRedirect filter rather than any Cilium-specific
+# configuration, so the behaviour moves with the API and not the controller.
+#
+# The HTTP listener still exists: it is what makes an ordinary
+# `http://grafana.aegis.test` land somewhere useful instead of failing to
+# connect. Hostnames are listed explicitly rather than matching the
+# listener's *.aegis.test wildcard, so an unrouted hostname stays a 404
+# rather than being redirected to an HTTPS address that serves nothing.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: https-redirect
+  namespace: gateway
+spec:
+  parentRefs:
+    - name: aegis
+      namespace: gateway
+      sectionName: http
+  hostnames:
+    - grafana.aegis.test
+    - auth.aegis.test
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            # 301 rather than 302: the HTTPS address is the permanent one
+            # now, and browsers caching it is the intended outcome.
+            statusCode: 301
