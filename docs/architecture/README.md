@@ -181,9 +181,44 @@ the pinned chart rather than the API server's acceptance of it:
 Toggle the value both ways. The evidence is the rendered resource appearing
 or disappearing, not the value showing up in `helm get values`.
 
+## TLS and identity
+
+```
+  scripts/bootstrap-pki.sh
+     |-- restores the Aegis development CA (off-cluster key, never in Git)
+     +-- creates Secret/aegis-dev-ca in the gateway namespace
+              |
+              v
+  cert-manager (Flux-owned HelmRelease, v1.21.1 — the only line
+                supporting Kubernetes 1.36)
+     |-- Issuer/aegis-dev-ca reads that Secret
+     +-- Certificate/grafana-tls, Certificate/auth-tls
+              |
+              v
+  Gateway aegis: https-grafana, https-auth listeners (TLS terminate)
+     +-- http listener now redirects (301) to the matching HTTPS host
+```
+
+Why the CA key is not in Git, and why it is not the SOPS age key reused for
+a second purpose, is `docs/decisions/0011-development-ca-trust-root.md`.
+One certificate per hostname, not one SAN certificate for both: a reissue
+or a mistake in one does not touch the other, proven live by rotating
+`grafana-tls` and confirming `auth-tls`'s serial was unchanged.
+
+Grafana's browser-facing OAuth URLs (`root_url`, `auth_url`) point at the
+HTTPS Gateway hostnames; its server-side calls (`token_url`, `api_url`)
+stay on cluster-internal Service DNS rather than following the browser to
+`auth.aegis.test` — routing them through the Gateway would mean Grafana
+also has to trust the development CA for no operational benefit, since the
+NetworkPolicy path there already exists and is already tested. See
+`docs/network/traffic-inventory.md`'s "HTTPS and the OIDC path" section for
+the full request path and live evidence, including a real browser login.
+
 ## Not present yet
 
 Namespace-wide default deny, egress policy, and L7 policy (only the three
-ingress boundaries above are enforced), Gateway/TLS ingress (access is via
-`kubectl port-forward`), image signing/verification, and any persistent
-cluster. Nothing above should be read as implying those exist.
+ingress boundaries above are enforced), image signing/verification, and
+any persistent cluster. The development CA is trusted only by clients that
+explicitly import it — this is not a publicly trusted certificate and must
+not be described as one. Nothing above should be read as implying those
+exist.

@@ -233,6 +233,54 @@ This describes this Cilium version's Gateway implementation. Other Gateway
 API implementations route through an ordinary pod and would be expressible
 portably.
 
+## HTTPS and the OIDC path
+
+TLS is now terminated at the Gateway. The identity picture from above is
+unchanged — `reserved:ingress` still opens the backend connection — TLS
+only changes what arrives on port 443 before decryption:
+
+```
+  browser
+        |
+        v  https://grafana.aegis.test  (dev CA trusted by the client)
+  Cilium Gateway Envoy  (TLS terminated, cert from cert-manager)
+        |
+        v  reserved:ingress -> Grafana:3000  (no NetworkPolicy selects Grafana)
+  Grafana
+        |
+        v  redirect to https://auth.aegis.test
+        |
+        v  reserved:ingress -> authentik-server:9000  (CiliumNetworkPolicy)
+  Authentik server  -- authenticate --
+        |
+        v  redirect to https://grafana.aegis.test/login/generic_oauth
+  Grafana (authenticated)
+```
+
+Observed with the CA trusted client-side:
+
+```
+10.244.0.241 (ingress) -> authentik-server:9000  policy-verdict:L3-L4 INGRESS ALLOWED
+10.244.0.241 (ingress) -> grafana:3000            to-endpoint FORWARDED
+```
+
+Grafana's server-side OAuth calls (`token_url`, `api_url`) stay on
+cluster-internal Service DNS rather than following the browser to
+`auth.aegis.test` — see the comment in
+`observability/kube-prometheus-stack/helmrelease.yaml` for why, and
+`docs/decisions/0011-development-ca-trust-root.md` for the CA those
+browser-facing certificates chain to. That path is unchanged from before
+TLS: `observability/grafana -> authentik/authentik-server:9000`, governed
+by `security/authentik/networkpolicy-server.yaml`, confirmed live with a
+real OAuth login (`akadmin@aegis.local`, `authLabels: ["Generic OAuth"]`,
+via the Grafana API).
+
+`kubectl port-forward` to `localhost:3000`/`localhost:9000` still works —
+Cilium does not subject node-originated traffic to pod ingress policy
+either way — but it is no longer how this platform is normally reached.
+It remains useful strictly as a debug/recovery fallback when the Gateway
+itself is the thing being changed.
+
 ## Unknowns
 
 - Only single-node behaviour is observed. `Connected Nodes: 1/1` is

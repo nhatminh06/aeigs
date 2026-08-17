@@ -17,16 +17,21 @@ Implemented:
 - Hubble Relay for flow visibility; observed traffic in docs/network/traffic-inventory.md
 - Authentik PostgreSQL, server and worker ingress have workload-level
   NetworkPolicy boundaries based on observed traffic (egress not covered)
-- Gateway API HTTP routing (Cilium's own controller) for grafana.aegis.test
-  and auth.aegis.test; plain HTTP only, no TLS
+- Gateway API routing (Cilium's own controller) for grafana.aegis.test and
+  auth.aegis.test, over trusted development HTTPS; HTTP redirects to HTTPS
 - the Gateway's backend peer is Cilium's reserved:ingress identity, so that
   one allow rule is a CiliumNetworkPolicy; all workload peers stay portable
+- cert-manager (v1.21.1) issues certificates from an Aegis development CA
+  whose private key lives outside this repository — see
+  docs/decisions/0011-development-ca-trust-root.md; not a publicly trusted
+  CA, and not to be described as one
 - Flux v2.9.4, reconstructed from committed manifests via scripts/bootstrap-flux.sh
 - Flux reads this public repo over anonymous HTTPS; no GitHub token in the cluster
 - SOPS + age secrets, with key/recipient verified during reconstruction
 - first GitOps-managed application (apps/demo-app: podinfo)
 - Prometheus + Grafana (kube-prometheus-stack via HelmRelease)
-- Authentik identity, Grafana logs in via OIDC through it
+- Authentik identity; Grafana logs in via OIDC through the trusted HTTPS
+  hostnames, verified with a real browser login
 - Kyverno admission policies (deny privileged containers, require pinned images)
 - CI: Gitleaks, Trivy config, Kyverno policy tests, Kustomize build validation
 - Renovate dependency discovery (built-in managers; no automerge)
@@ -275,17 +280,30 @@ bugs hit and fixed while setting it up (an empty `grant_types`, missing
 scope property mappings, and the SSH-blocked-network issue above). The
 Authentik→Grafana OIDC provider/application are defined declaratively via
 an Authentik **blueprint**, mounted from a SOPS-encrypted `Secret` — not
-configured by hand through the Authentik UI. Verified with a real login:
-Grafana provisioned a new user (`akadmin@aegis.local`,
-`authLabels: ["Generic OAuth"]`) distinct from the local `admin` account,
-confirmed via the Grafana API, not just observed once in a browser.
-Both services are reachable over plain HTTP through the Gateway at
-`http://grafana.aegis.test` and `http://auth.aegis.test`, which requires
-resolving both names to `127.0.0.1` — either two `/etc/hosts` entries or
-`curl --resolve <name>:80:127.0.0.1`. There is no TLS, so this is not a
-secure ingress path; the OIDC login flow still uses the port-forward
-hostnames (`authentik-server` to `9000`, `kube-prometheus-stack-grafana` to
-`3000`), which also remain the fallback when the Gateway is being changed.
+configured by hand through the Authentik UI. Verified with a real browser
+login through the trusted HTTPS Gateway hostnames: Grafana provisioned a
+new user (`akadmin@aegis.local`, `authLabels: ["Generic OAuth"]`) distinct
+from the local `admin` account, confirmed via the Grafana API, not just
+observed once in a browser.
+
+**Normal access** is `https://grafana.aegis.test` and
+`https://auth.aegis.test`, which requires:
+
+1. Resolving both names to `127.0.0.1` — either two `/etc/hosts` entries
+   or `curl --resolve <name>:443:127.0.0.1`.
+2. Trusting the Aegis development CA
+   (`~/.config/aegis/pki/ca.crt` by default, restored by
+   `scripts/bootstrap-pki.sh`) — for reproducible testing,
+   `curl --cacert <path-to-ca.crt>`; for a browser, import it into the
+   OS/browser trust store. This is a **development-only CA**, not publicly
+   trusted, and must never be described as production PKI. See
+   `docs/decisions/0011-development-ca-trust-root.md`.
+
+Plain HTTP on both hostnames redirects (301) to HTTPS. `kubectl
+port-forward` to `authentik-server:9000` / `kube-prometheus-stack-grafana:3000`
+still works — Cilium does not subject node-originated traffic to pod
+ingress policy — but it is debug/recovery fallback only, not normal
+access.
 
 Every security layer described in `CLAUDE.md` beyond this is planned but
 not yet present in this repository. Nothing above this stage should be
