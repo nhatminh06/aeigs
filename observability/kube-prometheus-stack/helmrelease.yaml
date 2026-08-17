@@ -32,20 +32,37 @@ spec:
             key: client-secret
       "grafana.ini":
         server:
-          # Browser-facing address used while testing via
-          # `kubectl port-forward`; this and the Authentik provider's
-          # registered redirect URI must match exactly.
-          root_url: http://localhost:3000/
+          # Browser-facing address. Grafana builds the OAuth redirect_uri
+          # from this, so it must match the Authentik provider's registered
+          # redirect URI exactly — including the scheme.
+          root_url: https://grafana.aegis.test/
         auth.generic_oauth:
           enabled: true
           name: Authentik
           client_id: a4aabfd0c61e2e6eba4fdaeed174c158b2b6e9f6
           scopes: "openid profile email"
-          # Browser-facing: only reachable while authentik-server is
-          # port-forwarded to localhost:9000.
-          auth_url: http://localhost:9000/application/o/authorize/
-          # Backend-only calls made by Grafana's server, not the
-          # browser — cluster-internal Service DNS works here.
+          # Browser-facing: the user's browser is redirected here, so it
+          # must be a name the browser can resolve and trust, not a
+          # cluster-internal Service DNS name.
+          auth_url: https://auth.aegis.test/application/o/authorize/
+          # Backend-only calls made by Grafana's server, not the browser.
+          # These deliberately stay on cluster-internal Service DNS rather
+          # than following auth_url to the public hostname:
+          #
+          #   - the Gateway's Envoy runs in the host network, so a pod
+          #     reaching auth.aegis.test would hairpin out to the node and
+          #     back in for no benefit;
+          #   - CoreDNS does not resolve aegis.test, so it would also need
+          #     a rewrite rule invented for this one call;
+          #   - Grafana would have to trust the development CA, meaning the
+          #     CA gets mounted into a workload that has no other need for
+          #     it;
+          #   - the Grafana -> authentik-server:9000 NetworkPolicy stays
+          #     the thing that authorises this path, and stays testable.
+          #
+          # Grafana's generic_oauth does not require the browser and
+          # backend endpoints to share a host, which is what makes the
+          # split safe here.
           token_url: http://authentik-server.authentik.svc.cluster.local/application/o/token/
           api_url: http://authentik-server.authentik.svc.cluster.local/application/o/userinfo/
         auth:
