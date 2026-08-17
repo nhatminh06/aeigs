@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: aegis-api
+  namespace: aegis-api
+  labels:
+    # kube-prometheus-stack's Prometheus only selects ServiceMonitors
+    # carrying this label (serviceMonitorSelector: matchLabels release:
+    # kube-prometheus-stack); the namespace selector is unrestricted, so
+    # this label is the only thing required for discovery.
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: aegis-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s

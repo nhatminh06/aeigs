@@ -1,0 +1,30 @@
+# Portable half of the ingress boundary. The Gateway peer cannot be
+# expressed here — see ciliumnetworkpolicy-gateway.yaml — but everything
+# else observed in Hubble can be.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: aegis-api-ingress
+  namespace: aegis-api
+spec:
+  podSelector:
+    matchLabels:
+      app: aegis-api
+  policyTypes:
+    - Ingress
+  ingress:
+    # kube-prometheus-stack's Prometheus scraping /metrics — observed live
+    # in Hubble as a real flow, not inferred from the ServiceMonitor alone.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080
+  # Before this policy, an unrelated demo-app pod reached the Service on
+  # port 80 (nc -zv reported "open"). That path is not listed above and
+  # is therefore denied.

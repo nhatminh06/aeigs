@@ -5,6 +5,7 @@ resources:
   - cert-manager.yaml
   - infrastructure.yaml
   - apps.yaml
+  - aegis-api.yaml
   - observability.yaml
   - security.yaml
   - identity.yaml

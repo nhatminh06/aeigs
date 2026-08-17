@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: aegis-api
+  namespace: aegis-api
+  labels:
+    app: aegis-api
+spec:
+  # ClusterIP only — Gateway API is the external ingress path, same as
+  # every other service on this platform.
+  type: ClusterIP
+  selector:
+    app: aegis-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

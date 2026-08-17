@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aegis-api
+  namespace: aegis-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aegis-api
+  template:
+    metadata:
+      labels:
+        app: aegis-api
+    spec:
+      # No Kubernetes API access needed, so no token to steal if the pod
+      # is compromised.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        # Matches the uid the Dockerfile sets explicitly (USER 65532:65532
+        # on distroless:nonroot) — required because that image's USER is
+        # numeric already, unlike podinfo's, but stated here regardless so
+        # the manifest doesn't depend on the image getting this right.
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: aegis-api
+          # github.com/nhatminh06/aegis-api v0.1.0, multi-platform
+          # (linux/amd64, linux/arm64). Pinned by digest, not tag — see
+          # CLAUDE.md's "prefer digests where it matters" for anything
+          # deployed, which a live workload is.
+          image: ghcr.io/nhatminh06/aegis-api@sha256:63571b7666b670a56e622f446c0a704f47f724c0ad53ea4f137537b948002c00
+          ports:
+            - name: http
+              containerPort: 8080
+          # Separate signals on purpose: liveness must not fail merely
+          # because the pod hasn't finished its startup warm-up.
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            # Measured locally, not copied: docker stats showed ~1.8MiB
+            # idle and ~3MiB under 200 concurrent /api/v1/work requests —
+            # this is a small static Go binary with no dependency to wait
+            # on. Requests give it real scheduler representation rather
+            # than an arbitrarily tiny number; limits leave wide headroom
+            # (>20x observed) while still being a small fraction of the
+            # node's 7.75Gi.
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

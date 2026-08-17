@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aegis-api
+  labels:
+    # Required for the api.aegis.test HTTPRoute to attach — the Gateway's
+    # listeners only accept routes from namespaces carrying this label.
+    aegis.dev/gateway-routes: "true"

@@ -1,0 +1,24 @@
+# The Cilium-specific exception to aegis-api-ingress.yaml, not a
+# replacement for it — same split as
+# security/authentik/ciliumnetworkpolicy-server-gateway.yaml. Cilium's
+# Gateway Envoy opens the backend connection under the reserved:ingress
+# identity, which no podSelector, namespaceSelector or ipBlock can select;
+# observed live in Hubble as (ingress) http-request FORWARDED for a real
+# Gateway request. See docs/decisions/0010-bootstrap-cilium-outside-flux.md's
+# addendum for why this is a named exception rather than a general policy.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: aegis-api-gateway-ingress
+  namespace: aegis-api
+spec:
+  endpointSelector:
+    matchLabels:
+      app: aegis-api
+  ingress:
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
