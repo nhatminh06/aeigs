@@ -50,6 +50,12 @@ Implemented:
   automatically, with Kyverno's signature requirement as an independent
   gate that does not trust ImagePolicy's selection — see "Owned workloads"
   below
+- reliability feedback loop: Prometheus recording/alert rules over
+  aegis-api's own metrics, proven against a real signed-but-bad release
+  (v0.1.4) that passed the entire supply chain and was auto-deployed by
+  Flux Image Automation, detected by an SLO breach rather than any
+  Kubernetes/Kyverno signal, and recovered through a Git-owned rollback —
+  see "Reliability" below
 
 Planned:
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
@@ -138,6 +144,36 @@ dedicated `GitRepository`, not `GitRepository/flux-system` — see
 `docs/decisions/0012-image-automation-git-write-credential.md` for the
 credential itself, a fine-grained token scoped to only this repository's
 contents, restored off-cluster like the age key and the development CA.
+
+## Reliability
+
+Signature verification proves *provenance* — Kyverno confirmed `v0.1.4`
+was genuinely built by aegis-api's own release pipeline. It proves
+nothing about whether the code inside is correct: `v0.1.4` passed every
+supply-chain gate (tests, Trivy, SBOM, Cosign, Kyverno) while carrying a
+deliberate O(2^n) latency regression, and Flux Image Automation deployed
+it exactly as designed. Kubernetes, Kyverno, and Hubble all reported the
+workload healthy throughout — only Prometheus, evaluating three SLIs
+(availability, 5xx rate, p95 latency) over `aegis-api`'s own metrics
+(`apps/aegis-api/prometheusrule.yaml`), detected the regression.
+
+Recovery went back through Git, not `kubectl`: a single commit suspended
+`ImageUpdateAutomation` and rolled `deployment.yaml` back to the known-good
+`v0.1.3` digest together, avoiding a race against automation's own write
+path. `v0.1.4`'s tag and signature remain published, untouched, as
+incident evidence. The root cause was fixed and a regression guard added
+as `v0.1.5`, independently re-verified through the full supply chain
+before automation was resumed through Git — letting `ImageUpdateAutomation`
+generate its own commit to `v0.1.5` rather than hand-editing it, proving
+normal recovery from suspended incident mode.
+
+See [`reliability-lab/aegis-api-slo/`](reliability-lab/aegis-api-slo/)
+for the measured baseline, SLI/SLO definitions, and load pattern, and
+[`docs/runbooks/aegis-api-bad-release.md`](docs/runbooks/aegis-api-bad-release.md)
+for the full incident timeline and the emergency procedure. There is
+deliberately no automatic rollback controller: these thresholds are
+development-lab objectives sized from one measured baseline, not
+validated enough to be trusted to change production state unattended.
 
 ## Prerequisites (for local development)
 
@@ -381,10 +417,10 @@ new user (`akadmin@aegis.local`, `authLabels: ["Generic OAuth"]`) distinct
 from the local `admin` account, confirmed via the Grafana API, not just
 observed once in a browser.
 
-**Normal access** is `https://grafana.aegis.test` and
-`https://auth.aegis.test`, which requires:
+**Normal access** is `https://grafana.aegis.test`, `https://auth.aegis.test`,
+and `https://api.aegis.test`, which requires:
 
-1. Resolving both names to `127.0.0.1` — either two `/etc/hosts` entries
+1. Resolving all three names to `127.0.0.1` — either `/etc/hosts` entries
    or `curl --resolve <name>:443:127.0.0.1`.
 2. Trusting the Aegis development CA
    (`~/.config/aegis/pki/ca.crt` by default, restored by
