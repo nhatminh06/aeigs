@@ -220,19 +220,27 @@ still hold on a new baseline.
 
 ![Aegis architecture: source & bootstrap, FluxCD GitOps control plane, Kubernetes API & workloads, admission control, and the local dev/drift-test loop](docs/architecture/architecture.png)
 
-*This image is out of date — it predates Authentik, the anonymous Git
-reconciliation, and the current bootstrap path. No editable source for it
-exists in the repository, so it can't be revised in place.
+*This image is out of date — it predates Cilium/Hubble, the Gateway API +
+cert-manager HTTPS path, Authentik, aegis-api, Flux Image Automation, the
+reliability feedback loop, the anonymous Git reconciliation, and the
+current bootstrap path. No editable source for it exists in the
+repository, so it can't be revised in place.
 [`docs/architecture/README.md`](docs/architecture/README.md) is the
 accurate, maintainable version and is what to update as the platform
 changes.*
 
-Laptop → Docker → `kind` (cluster `aegis-dev`, Cilium as CNI) → FluxCD (reconciling
-`clusters/dev-kind` from this repo) → `apps/demo-app` (podinfo, namespace
-`demo-app`) and `observability/kube-prometheus-stack` (Prometheus +
-Grafana, namespace `observability`), with `security/kyverno` +
-`security/policies` enforcing admission control on everything Flux
-applies.
+Laptop → Docker → `kind` (cluster `aegis-dev`, Cilium 1.20.0 as CNI, with
+Hubble for flow visibility) → FluxCD (reconciling `clusters/dev-kind` from
+this repo) → `apps/demo-app` (podinfo) and `apps/aegis-api` (the
+application this project owns end-to-end, source through signed release
+through automated deployment), `security/authentik` (identity) and
+`observability/kube-prometheus-stack` (Prometheus + Grafana), all routed
+through `gateway` (Gateway API + cert-manager, trusted development HTTPS
+at `*.aegis.test`), with `security/kyverno` + `security/policies`
+enforcing admission control on everything Flux applies — including the
+Cosign signature Kyverno requires before admitting an aegis-api release,
+and the Prometheus rules that catch a signed-but-bad one after the fact
+(see "Reliability" above).
 
 Create the cluster with `scripts/cluster-up.sh` and remove it with
 `scripts/cluster-down.sh` (destructive — deletes all workloads on it,
