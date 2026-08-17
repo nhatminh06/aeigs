@@ -10,3 +10,4 @@ resources:
   - ciliumnetworkpolicy-gateway.yaml
   - imagerepository.yaml
   - imagepolicy.yaml
+  - imageupdateautomation.yaml

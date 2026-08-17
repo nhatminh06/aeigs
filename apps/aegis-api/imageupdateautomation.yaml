@@ -1,0 +1,54 @@
+# Must live in the SAME namespace as the ImagePolicy it selects from —
+# confirmed against current official Flux documentation, not assumed:
+# "the image-automation-controller lists all the ImagePolicies in the
+# ImageUpdateAutomation's namespace" and policySelector has no
+# cross-namespace field, unlike sourceRef below. Putting this in
+# flux-system first (matching where the GitRepository lives) produced a
+# real, observed bug: reconciliation succeeded but silently found zero
+# eligible policies, reporting "no change" even though ImagePolicy had
+# already selected a newer release — caught by checking the automation
+# controller's own logs after a real release genuinely went unselected,
+# not assumed to be working from a healthy-looking Ready condition alone.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageUpdateAutomation
+metadata:
+  name: aegis-api
+  namespace: aegis-api
+spec:
+  suspend: false
+  interval: 5m
+  sourceRef:
+    kind: GitRepository
+    name: aegis-api-image-writer
+    # Cross-namespace: the writer credential lives in flux-system,
+    # grouped with the other Flux-runtime GitRepository rather than
+    # duplicated per application — see clusters/dev-kind/flux-system/
+    # image-automation.yaml.
+    namespace: flux-system
+  # Only this namespace's aegis-api-labeled ImagePolicy is eligible — a
+  # future ImagePolicy for another workload in this namespace does not
+  # silently become writable by this automation just by existing.
+  policySelector:
+    matchLabels:
+      app.kubernetes.io/name: aegis-api
+  update:
+    path: ./apps/aegis-api
+    strategy: Setters
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      # Named as a controller, not a person — this did not write itself
+      # by human hand, and the commit history should say so plainly.
+      author:
+        email: flux-image-automation@aegis.local
+        name: Aegis Flux Image Automation
+      messageTemplate: |
+        Update aegis-api image
+
+        {{ range $image, $change := .Changed.Changes -}}
+        {{ $image }}: {{ $change.OldValue }} -> {{ $change.NewValue }}
+        {{ end -}}
+    push:
+      branch: main
