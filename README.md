@@ -57,10 +57,19 @@ Implemented:
   Kubernetes/Kyverno signal, and recovered through a Git-owned rollback —
   see "Reliability" below
 
+- home-k3s: a second, persistent environment (K3s + Cilium on a real
+  Linux host, Flux, Kyverno, aegis-api pinned to a manually promoted
+  known-good release) — a persistent foundation, not a production
+  cluster: single node, no HA, no Gateway/TLS/observability yet, no
+  backup. Proven live: full automatic recovery from both a K3s service
+  restart and a real host reboot, plus GitOps drift correction. See
+  docs/decisions/0013-home-k3s-persistent-environment.md and
+  docs/runbooks/home-k3s-recovery.md
+
 Planned:
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
-- persistent home cluster
-- backup and disaster-recovery drills
+- Gateway/TLS/observability/Authentik on home-k3s
+- persistent application state on home-k3s, then backup and disaster-recovery drills
 ```
 
 ## Owned workloads

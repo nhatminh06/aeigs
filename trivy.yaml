@@ -12,6 +12,7 @@ scan:
     # files in it we DO maintain by hand (gotk-sync.yaml's GitRepository
     # and Kustomization, kustomization.yaml) still get scanned.
     - clusters/dev-kind/flux-system/gotk-components.yaml
+    - clusters/home-k3s/flux-system/gotk-components.yaml
 severity:
   - HIGH
   - CRITICAL

@@ -1,7 +1,11 @@
 # Architecture
 
-Current state of the `dev-kind` environment. `architecture.png` predates
-Authentik and the credential/bootstrap changes; this file is the accurate
+Current state of Aegis's two environments. Most of this document
+describes `dev-kind`, the disposable engineering environment where every
+control here was built and tested; `home-k3s`, the newer persistent
+environment, is covered in its own section below rather than duplicated
+throughout. `architecture.png` predates Authentik, the credential/
+bootstrap changes, and home-k3s entirely; this file is the accurate
 version and the one to update as the platform changes.
 
 ## Runtime
@@ -328,10 +332,74 @@ thresholds above are development-lab objectives sized from one measured
 baseline, not validated enough to be trusted to change production state
 unattended.
 
+## Persistent environment (home-k3s)
+
+`dev-kind` is disposable by design; it can't teach persistent
+control-plane state, host lifecycle, or reboot recovery. `home-k3s` is a
+second, independent environment on a real Linux host that does — not a
+replacement, and not yet carrying most of what `dev-kind` runs:
+
+```
+                       Aegis Git (github.com/nhatminh06/aeigs)
+                                     |
+                     +---------------+---------------+
+                     |                               |
+                     v                               v
+                dev-kind                        home-k3s
+           (disposable, kind)              (persistent, K3s on a
+                     |                       real Linux host)
+        automated release selection                |
+        (Flux Image Automation,           known-good release only,
+         ImageRepository/Policy/           promoted by a deliberate
+         UpdateAutomation)                 human Git commit — no
+                     |                     ImageRepository/Policy/
+        failure injection, SLO,            UpdateAutomation, no
+        security labs                      write credential at all
+                     |                               |
+                     v                               v
+              Kyverno (3 policies,              Kyverno (same 3
+              signature required)               policies, reused as-is)
+                     |                               |
+                     v                               v
+           Gateway/TLS/Prometheus/            aegis-api only,
+           Grafana/Authentik                  reached via
+                                               kubectl port-forward
+                                               (Phase 1 only)
+```
+
+Both environments read the same public repository anonymously — neither
+has ever had a runtime Git token. Only `dev-kind` can write to it (via
+the dedicated `aegis-api-image-writer` credential,
+`docs/decisions/0012-image-automation-git-write-credential.md`);
+`home-k3s` is a Git consumer only, by design, so there is exactly one
+place a bad release can get auto-selected from, and one deliberate human
+step between "validated on dev-kind" and "running on home-k3s."
+
+K3s (pinned `v1.36.3+k3s1`) and Cilium (1.20.0, same version as
+dev-kind, bootstrap-managed outside Flux for the same reason — Flux
+needs a working pod network before it can reconcile anything) form the
+base; Flux (core controllers only — no image automation) reconciles
+`clusters/home-k3s`. Proven live: a K3s service restart, a real full
+host reboot, and a GitOps drift-and-correct cycle all recovered fully
+automatically, with no manual `kubectl apply` at any point.
+
+Full reasoning — including three real, host-specific networking failures
+found and fixed live (kube-proxy/Cilium coexistence, Cilium's
+device/MTU auto-detection picking up the wrong interface, a host
+firewall silently dropping pod-to-Service traffic) — is in
+`docs/decisions/0013-home-k3s-persistent-environment.md`. Day-to-day
+health checks are in `docs/runbooks/home-k3s-recovery.md`.
+
+**Explicitly not present on home-k3s yet**: Gateway API, TLS, Authentik,
+Prometheus/Grafana, SLO rules, any image automation. See "Not present
+yet" below and the ADR's environment-comparison table.
+
 ## Not present yet
 
 Namespace-wide default deny, egress policy, and L7 policy (only the
-ingress boundaries above are enforced), and any persistent cluster. The
+ingress boundaries above are enforced). Gateway/TLS, Authentik,
+Prometheus/Grafana, SLO rules, backup/restore, and any node-level HA are
+not present on `home-k3s` — see its own section above. The
 development CA is trusted only by clients that explicitly import it —
 this is not a publicly trusted certificate and must not be described as
 one. Automatic rollback, progressive delivery/canary release, or any

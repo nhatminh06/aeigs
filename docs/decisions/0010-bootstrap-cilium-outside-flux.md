@@ -45,9 +45,11 @@ exactly the situation where automation was supposed to help. The blast
 radius of that failure is the whole cluster, and the upside is avoiding
 one command during a rebuild.
 
-**Cilium's kube-proxy replacement.** Not enabled. kube-proxy is left in
-place. That is a separate change with its own failure modes and should be
-evaluated on its own, not bundled into the CNI migration.
+**Cilium's kube-proxy replacement.** Not enabled at the time this ADR was
+written — kube-proxy was left in place, evaluated separately from the CNI
+migration itself. It was turned on later, once Gateway API needed it
+(Cilium's own Gateway implementation only works with the kube-proxy
+replacement); see `bootstrap/cilium/values.yaml`.
 
 ## Consequences
 
