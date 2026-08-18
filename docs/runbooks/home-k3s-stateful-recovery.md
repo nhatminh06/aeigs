@@ -68,8 +68,8 @@ something to assume away in future scale-testing.
 | Pod/container loss | **Safe** | Observed live — PVC persists independently of Pod identity. |
 | K3s service restart | **Safe** | Observed live. |
 | Full host reboot | **Safe** | Observed live — same `persistence_proof` rows, same PVC UID, before and after a real reboot of the host. |
-| PVC deletion | **NOT protected** | `local-path`'s `StorageClass` has `reclaimPolicy: Delete` (confirmed live on the actual `PV`) — deleting the PVC deletes the backing directory. Not tested; analysis only, per this milestone's own scope. |
-| Host disk loss | **NOT protected** | No backup exists. This is the key unresolved risk driving the next milestone. |
+| PVC deletion | **Recoverable from backup** | Deliberately tested: the PVC/PV/backing directory were destroyed for real, and the exact data was restored from an independent, encrypted, off-host `pg_dump` backup — see `docs/runbooks/stateful-lab-postgresql-backup-restore.md`. |
+| Host disk loss | **Database recoverable, full host rebuild unproven** | If the whole disk were lost: a new K3s environment + Git + the SOPS age key would let Flux rebuild every Kubernetes object, and the off-host backup + its own dedicated age key would restore the database rows — but this exact combined scenario (both at once, from a truly wiped host) has not been tested end-to-end. |
 
 ## GitOps recreates objects, not data
 
@@ -94,9 +94,9 @@ inaccurate.
 
 ## What's next
 
-Backup — but not yet, and not a tool choice made in advance. The next
-milestone should first decide *what* needs backing up (PostgreSQL
-logical data vs. volume-level PVC snapshots vs. the Kubernetes manifests
-themselves, which Git already covers) before picking a mechanism, then
-prove it with a real destroy-and-restore cycle against this exact
-`persistence_proof` invariant.
+Backup and destructive restore are now proven — see
+`docs/runbooks/stateful-lab-postgresql-backup-restore.md` for the full
+destroy/restore cycle, including the mandatory proof that Git rebuilt
+the Kubernetes objects but not the database rows. The next open question
+is whether that same recovery still works starting from a completely
+wiped host, not just a wiped volume on an already-running one.

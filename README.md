@@ -69,14 +69,22 @@ Implemented:
   own namespace, never Authentik's database): a known data invariant
   survives Pod recreation, a StatefulSet rollout restart, a K3s service
   restart, GitOps drift correction, and a real full host reboot — all
-  proven live, same data before and after every one. PVC deletion and
-  host disk loss are explicitly **not** protected — no backup exists.
-  See docs/runbooks/home-k3s-stateful-recovery.md
+  proven live, same data before and after every one. See
+  docs/runbooks/home-k3s-stateful-recovery.md
+- home-k3s PostgreSQL persistence survives workload/host lifecycle events
+  and has been destructively restored from an encrypted off-host logical
+  backup: the PVC/PV/backing directory were deliberately destroyed, Flux
+  rebuilt only the Kubernetes objects (confirmed empty — no database rows),
+  and `pg_restore` from the off-host backup brought back the exact
+  original data. Manual, single point-in-time backup only — no schedule,
+  no retention, no PITR, and a wiped *volume* was proven recoverable, not
+  yet a wiped host. See docs/runbooks/stateful-lab-postgresql-backup-restore.md
 
 Planned:
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
 - Gateway/TLS/observability/Authentik on home-k3s
-- backup + destructive restore drill for the PostgreSQL persistence lab
+- full wiped-host reconstruction + database restore drill (proving recovery
+  from a genuinely empty machine, not just a wiped volume on a running one)
 ```
 
 ## Owned workloads

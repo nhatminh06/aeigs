@@ -427,9 +427,51 @@ Aegis Git (StatefulSet/Service/PVC declaration, encrypted Secret)
         X  -- does NOT recreate the rows inside PostgreSQL's data files
 ```
 
-Full results, the persistence/failure model, and what remains
-unprotected (PVC deletion, host disk loss — no backup exists yet) are in
+Full results and the persistence/failure model (Pod loss, K3s restart,
+host reboot — all proven safe) are in
 `docs/runbooks/home-k3s-stateful-recovery.md`.
+
+### Backup and destructive restore
+
+Proven live: an encrypted, off-host `pg_dump` backup, followed by
+deliberately destroying the PVC/PV/backing directory, letting Flux
+rebuild the Kubernetes objects onto fresh storage, confirming the
+database rows are genuinely gone, then restoring the exact original data
+from that backup:
+
+```
+PostgreSQL (stateful-lab)
+        |
+      pg_dump (inside the container, exact version match)
+        |
+        v
+   encrypted backup (age, dedicated key — not the SOPS or CA key)
+        |
+        v
+   OFF-HOST: operator's own machine, never the K3s host, never Git
+```
+
+The disaster path this proves, drawn separately so Git is never implied
+to store database rows:
+
+```
+PVC/PV/data lost
+        |
+        v
+   Aegis Git -> Flux -> recreates Kubernetes objects, NEW empty PVC
+        |
+        v
+   (database rows still absent at this point — confirmed, not assumed)
+        |
+        v
+   off-host encrypted backup -> pg_restore -> exact original rows return
+```
+
+Full evidence (checksums, exact fingerprint match, the mandatory proof
+that Flux alone left the database empty) is in
+`docs/runbooks/stateful-lab-postgresql-backup-restore.md`. This is a
+manual, single point-in-time backup — no schedule, no retention, no
+PITR, and a wiped *volume* was proven recoverable, not yet a wiped host.
 
 ## Not present yet
 

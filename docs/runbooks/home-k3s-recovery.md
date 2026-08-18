@@ -77,6 +77,18 @@ it deliberately first.
    does not protect against — do not treat a healthy Pod as proof the
    data survived; query it.
 
+**If Kubernetes objects are missing** (`Namespace`/`Secret`/`StatefulSet`/
+`Service`/`PVC` declaration gone) — check Flux first
+(`flux get kustomizations`); it owns all of those and will recreate them
+on its own once the `GitRepository` is healthy.
+
+**If the SQL data itself is missing** (table absent, rows absent, or a
+fingerprint mismatch) — **Flux cannot fix this.** It has never contained
+a database row. Recovery requires a verified encrypted backup and its
+dedicated age key — see
+`docs/runbooks/stateful-lab-postgresql-backup-restore.md`. Do not expect
+`flux reconcile` to help here.
+
 ## Common situations
 
 **"It was fine yesterday, now everything's unreachable."** Almost always
