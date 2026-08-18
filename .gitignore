@@ -1,22 +1,6 @@
-# OS
-.DS_Store
-
-# Local Claude Code session state
-.claude/
-
-# Editors
-.vscode/
-.idea/
-*.swp
-
-# kind / kubectl local state
-kubeconfig
-*.kubeconfig
-
-# age / SOPS key material — never commit private keys
-*.agekey
-age.key
-
-# Decrypted secrets that should only ever exist locally
-*.decrypted.yaml
-*.decrypted.yml
+# Database backup artifacts must never be committed — their real home is
+# ~/.local/share/aegis/backups/ (outside this repository entirely). This
+# is belt-and-suspenders in case a script is ever run from inside the
+# repo directory by mistake.
+*.dump
+*.dump.age
