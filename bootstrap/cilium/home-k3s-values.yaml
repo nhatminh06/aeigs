@@ -76,3 +76,24 @@ gatewayAPI:
   enabled: true
   hostNetwork:
     enabled: true
+
+# home-k3s-only. dev-kind doesn't need this: kind's node container
+# already allows unprivileged binding to ports <1024 (inherited from its
+# own container runtime), so cilium-envoy binds :80/:443 there with no
+# extra capability. cachyos is a real host with the ordinary Linux
+# default (net.ipv4.ip_unprivileged_port_start=1024, confirmed live) —
+# observed live as a real failure first: cilium-envoy's hostNetwork
+# listener rejected with "cannot bind '0.0.0.0:80': Permission denied"
+# even though the chart already grants NET_ADMIN/SYS_ADMIN, because
+# NET_BIND_SERVICE isn't in that set and the chart strips capabilities
+# from the forked Envoy process unless explicitly told to keep this one.
+# Fixed via the chart's own documented mechanism rather than a host
+# sysctl change, so nothing outside the cluster needs to know about it.
+envoy:
+  securityContext:
+    capabilities:
+      envoy:
+        - NET_ADMIN
+        - SYS_ADMIN
+        - NET_BIND_SERVICE
+      keepCapNetBindService: true
