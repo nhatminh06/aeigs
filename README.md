@@ -67,12 +67,18 @@ Implemented:
 - Cilium Gateway API is installed and correctly configured on home-k3s
   (CRDs, GatewayClass, a Gateway reaching Accepted+Programmed, an
   Accepted HTTPRoute for aegis-api) but is **not usable**: every request
-  through it times out due to an upstream Cilium defect (the reserved
-  `ingress` identity's connection to the backend never completes its TCP
-  handshake), reproduced identically on Cilium 1.20.0 and 1.17.18 and
-  matching multiple open upstream reports. aegis-api on home-k3s remains
-  reachable only via `kubectl port-forward`. No TLS/observability was
-  attempted on top of a routing path that doesn't work. See
+  through it times out due to a defect scoped to Cilium's Gateway
+  `reserved:ingress` datapath (the identity's connection to the backend
+  never completes its TCP handshake), reproduced identically on Cilium
+  1.20.0 and 1.17.18. A follow-up control experiment
+  (`ingress-lab/`) proved home-k3s's networking is otherwise fine: an
+  ordinary reverse-proxy workload reaches aegis-api through both a
+  pod-to-pod path and a plain K3s NodePort, cleanly and deterministically
+  (20/20 requests). aegis-api on home-k3s remains reachable only via
+  `kubectl port-forward` — the working proxy/NodePort path was
+  deliberately not adopted as permanent infrastructure; that is a
+  separate architecture decision, not made here. No TLS/observability
+  was attempted on top of a routing path that doesn't work. See
   docs/decisions/0014-home-k3s-gateway-blocked-by-cilium-ingress-identity-bug.md
 - persistent PostgreSQL state on home-k3s (stateful-lab/postgresql/, its
   own namespace, never Authentik's database): a known data invariant

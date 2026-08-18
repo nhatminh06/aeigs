@@ -109,3 +109,55 @@ before layering TLS on top of it, and that baseline never worked.
   scheduler are all unaffected and were re-verified healthy after this
   investigation (including after an unplanned Cilium crash-loop during
   version testing, recovered via `helm rollback` with no data impact).
+
+## Addendum: datapath isolation experiment
+
+A follow-up milestone built a minimal control experiment
+(`ingress-lab/`) to test whether the defect above is specific to
+Cilium's Gateway/`reserved:ingress` datapath, or a more general
+same-node forwarding problem on this host. An ordinary `nginx`
+Deployment/Service (never touching Cilium's Gateway API) was proxied in
+front of `aegis-api`, first pod-to-pod, then exposed via a plain K3s
+`NodePort` — no TLS, no cert-manager, no MetalLB/Traefik/ingress-nginx,
+no permanent architecture change.
+
+**Result: both control paths worked, completely and deterministically.**
+
+| Path | Backend source identity | TCP result | HTTP result |
+|---|---|---|---|
+| Cilium Gateway (`reserved:ingress` → `aegis-api`) | `ingress` (8) | SYN-ACK received, handshake never completes | 503, every request |
+| Pod-to-pod control proxy (`ingress-lab-proxy` → `aegis-api`) | ordinary workload identity (`46914`) | completes cleanly (SYN, SYN-ACK, ACK, ACK, FIN) | 200 on `/healthz`, `/readyz`, `/api/v1/info`; 404 on `/metrics` |
+| NodePort-exposed control proxy (external client → proxy → `aegis-api`) | `host` (1) → proxy; proxy (`46914`) → `aegis-api`, same as above | completes cleanly on both legs | 20/20 success on `/healthz`, `/readyz`, `/api/v1/info`; 20/20 correct 404 on `/metrics` |
+
+Captured live via `cilium-dbg monitor --type trace` for every row —
+not inferred. The proxy pod's own identity (an ordinary Kubernetes
+Pod, not hostNetwork, not Cilium's Envoy) reaching `aegis-api` behaves
+exactly like any other workload-to-workload connection on this cluster:
+full handshake, clean close, every time, 20/20 external requests via
+`NodePort` with zero failures across all three real paths.
+
+**Hypothesis outcome**: **H1 supported — the defect localizes to the
+Cilium Gateway `reserved:ingress` datapath specifically**, not to
+same-node forwarding, `hostNetwork` proxying, or NodePort/K3s exposure
+in general (H2 and H3 both refuted by this evidence: an ordinary pod
+*and* the NodePort/host path both work cleanly). This does not confirm
+the exact upstream root cause inside Cilium's Gateway implementation —
+only that the failure is scoped to that one specific code path, not the
+host, kernel, or Kubernetes networking stack more broadly.
+
+This means `home-k3s` **can** expose `aegis-api` externally today via
+an ordinary reverse-proxy workload + `NodePort` — that combination is
+proven working, live, repeatedly. It was deliberately not adopted as
+permanent infrastructure in this milestone: that is a real architecture
+decision (proxy config ownership, TLS story, NetworkPolicy identity,
+Authentik compatibility, dev-kind divergence) that deserves its own
+milestone, not a side effect of a diagnostic experiment. The Gateway
+resources from the original attempt are left exactly as they were —
+broken, documented, not deleted — since Cilium's Gateway API remains
+the long-term preferred mechanism if the upstream defect is ever fixed.
+
+`ingress-lab/` is committed as a repeatable regression lab (see its own
+`README.md`) rather than a one-off script, specifically so this
+comparison can be re-run cheaply against a future Cilium release to
+check whether the Gateway path starts working again — nothing about the
+control experiment itself needs to change for that.

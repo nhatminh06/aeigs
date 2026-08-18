@@ -1,0 +1,16 @@
+# type: ClusterIP by default — the test script patches this to NodePort
+# for the external-exposure phase and restores it before teardown. Kept
+# ClusterIP here so a plain `kubectl apply -k` never opens a NodePort by
+# itself.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-lab-proxy
+  namespace: ingress-lab
+spec:
+  selector:
+    app: ingress-lab-proxy
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

@@ -1,0 +1,38 @@
+# Deliberately narrow: only the paths the Gateway's HTTPRoute exposes
+# (apps/aegis-api/home-k3s/httproute.yaml) are proxied here, so a
+# successful result is a fair comparison to the Gateway path rather than
+# a looser test. /metrics is not configured — any request for it falls
+# through to nginx's default 404, matching the Gateway's own behavior.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-lab-proxy-conf
+  namespace: ingress-lab
+data:
+  nginx.conf: |
+    worker_processes 1;
+    pid /tmp/nginx.pid;
+    events {
+      worker_connections 128;
+    }
+    http {
+      client_body_temp_path /tmp/client_body;
+      proxy_temp_path /tmp/proxy;
+      fastcgi_temp_path /tmp/fastcgi;
+      uwsgi_temp_path /tmp/uwsgi;
+      scgi_temp_path /tmp/scgi;
+
+      server {
+        listen 8080;
+
+        location /healthz {
+          proxy_pass http://aegis-api.aegis-api.svc.cluster.local:80/healthz;
+        }
+        location /readyz {
+          proxy_pass http://aegis-api.aegis-api.svc.cluster.local:80/readyz;
+        }
+        location /api/v1/ {
+          proxy_pass http://aegis-api.aegis-api.svc.cluster.local:80/api/v1/;
+        }
+      }
+    }
