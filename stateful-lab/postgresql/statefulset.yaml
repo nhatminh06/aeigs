@@ -1,0 +1,114 @@
+# Persistence-only experiment: does data on a local-path PVC survive Pod
+# recreation, a K3s service restart, and a real host reboot? Not a
+# database Aegis' identity/applications depend on — see
+# docs/decisions/0013-home-k3s-persistent-environment.md and
+# docs/runbooks/home-k3s-stateful-recovery.md.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgresql
+  namespace: stateful-lab
+spec:
+  serviceName: postgresql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+    spec:
+      # No Kubernetes API access needed.
+      automountServiceAccountToken: false
+      securityContext:
+        # fsGroup makes kubelet chown the mounted PVC to this GID before
+        # the container starts, which is what lets the official Postgres
+        # entrypoint skip its normal root-owned chown-then-step-down path
+        # and start directly as a non-root user — verified live, not
+        # assumed to just work.
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgresql
+          # postgres:17-alpine, digest confirmed live from the registry
+          # (Docker-Content-Digest header + docker buildx imagetools,
+          # cross-checked) at the time this was pinned.
+          image: postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: aegis_state
+            - name: POSTGRES_USER
+              value: aegis
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql
+                  key: postgres-password
+            # Data directory nested one level below the mount point —
+            # the mount's own top-level directory carries the lost+found
+            # style metadata local-path's setup script creates, which the
+            # postgres entrypoint's "is this dir empty" check dislikes.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            # The official Postgres image writes to a couple of
+            # root-filesystem paths beyond PGDATA at startup (/tmp, and
+            # /var/run/postgresql for its Unix socket) — scoped emptyDir
+            # mounts for exactly those let the root filesystem stay
+            # read-only otherwise, same posture as aegis-api's container.
+            - name: tmp
+              mountPath: /tmp
+            - name: run-postgresql
+              mountPath: /var/run/postgresql
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+              ephemeral-storage: 64Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+              ephemeral-storage: 256Mi
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "aegis", "-d", "aegis_state"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "aegis", "-d", "aegis_state"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: run-postgresql
+          emptyDir:
+            sizeLimit: 16Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # Explicit rather than relying on the default class, so this
+        # manifest states its own intent even though local-path happens
+        # to be the cluster default too.
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 1Gi

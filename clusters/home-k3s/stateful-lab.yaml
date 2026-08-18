@@ -1,0 +1,23 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: stateful-lab
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./stateful-lab/postgresql
+  prune: true
+  wait: true
+  timeout: 3m
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+  # No verifyImages rule applies to this workload (Kyverno's is scoped to
+  # namespace aegis-api), but waiting on the policy Kustomization anyway
+  # keeps the same race-avoidance discipline as aegis-api.yaml.
+  dependsOn:
+    - name: kyverno-policies
+  sourceRef:
+    kind: GitRepository
+    name: flux-system

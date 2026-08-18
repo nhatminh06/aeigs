@@ -5,3 +5,4 @@ resources:
   - kyverno.yaml
   - kyverno-policies.yaml
   - aegis-api.yaml
+  - stateful-lab.yaml

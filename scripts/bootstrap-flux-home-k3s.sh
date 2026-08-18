@@ -3,10 +3,12 @@
 # repository, without contacting GitHub as a writer — same reasoning as
 # scripts/bootstrap-flux.sh (dev-kind).
 #
-# Simpler than dev-kind's version: no sops-age secret step, since home-k3s
-# has no encrypted secrets in Phase 1 (no Authentik/Grafana/etc. here).
+# Restores the same sops-age secret dev-kind's bootstrap script does
+# (needed since stateful-lab/postgresql/secret.enc.yaml — the first
+# encrypted secret on this cluster); everything else stays simpler than
+# dev-kind's version since there's no other encrypted state here.
 #
-# Safe to re-run: every step is an apply.
+# Safe to re-run: every step is an apply or an idempotent recreate.
 set -euo pipefail
 
 EXPECTED_CONTEXT="home-k3s"
@@ -14,11 +16,14 @@ LOCAL_KUBECONFIG="${HOME}/.kube/home-k3s.yaml"
 export KUBECONFIG="${LOCAL_KUBECONFIG}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FLUX_DIR="${REPO_ROOT}/clusters/home-k3s/flux-system"
+AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-${HOME}/.config/sops/age/keys.txt}"
 
-if ! command -v kubectl >/dev/null 2>&1; then
-  echo "error: required command 'kubectl' not found on PATH" >&2
-  exit 1
-fi
+for cmd in kubectl age-keygen; do
+  if ! command -v "${cmd}" >/dev/null 2>&1; then
+    echo "error: required command '${cmd}' not found on PATH" >&2
+    exit 1
+  fi
+done
 
 if [ ! -f "${LOCAL_KUBECONFIG}" ]; then
   echo "error: ${LOCAL_KUBECONFIG} not found — run scripts/fetch-home-k3s-kubeconfig.sh first" >&2
@@ -43,6 +48,34 @@ kubectl wait --for=condition=Established --timeout=120s \
 
 echo "==> waiting for Flux controllers to be available"
 kubectl -n flux-system wait --for=condition=Available --timeout=300s deployment --all
+
+# Same key dev-kind restores from — one age keypair for the whole repo,
+# not one per cluster. Catches a wrong/missing key before any encrypted
+# Kustomization gets a chance to fail opaquely.
+if [ ! -f "${AGE_KEY_FILE}" ]; then
+  echo "error: age private key not found at '${AGE_KEY_FILE}'" >&2
+  echo "       restore it from backup; do NOT run age-keygen (a new key" >&2
+  echo "       cannot decrypt the existing *.enc.yaml files)" >&2
+  exit 1
+fi
+key_recipient="$(age-keygen -y "${AGE_KEY_FILE}" 2>/dev/null || true)"
+sops_recipient="$(grep -o 'age1[a-z0-9]*' "${REPO_ROOT}/.sops.yaml" | head -1)"
+if [ -z "${key_recipient}" ]; then
+  echo "error: could not derive a public key from '${AGE_KEY_FILE}'" >&2
+  exit 1
+fi
+if [ "${key_recipient}" != "${sops_recipient}" ]; then
+  echo "error: age key does not match the recipient in .sops.yaml" >&2
+  echo "       key file : ${key_recipient}" >&2
+  echo "       .sops.yaml: ${sops_recipient}" >&2
+  exit 1
+fi
+echo "==> age key matches .sops.yaml recipient (${key_recipient})"
+
+echo "==> restoring sops-age secret from ${AGE_KEY_FILE}"
+kubectl -n flux-system create secret generic sops-age \
+  --from-file=age.agekey="${AGE_KEY_FILE}" \
+  --dry-run=client -o yaml | kubectl apply -f -
 
 echo "==> applying committed sync configuration (gotk-sync.yaml)"
 kubectl apply -f "${FLUX_DIR}/gotk-sync.yaml"
