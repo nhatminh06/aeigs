@@ -57,10 +57,24 @@ echo "    you will be prompted for your password"
 #                                 accepted here because this is a
 #                                 single-user personal machine; revisit if
 #                                 that ever changes.
+# disable-kube-proxy: true     — required for Cilium's kube-proxy-replacement
+#                                 mode. Originally left out here and added
+#                                 live, by hand, after a real failure:
+#                                 leaving K3s's kube-proxy running alongside
+#                                 Cilium left Service ClusterIPs reachable
+#                                 from the host network but NOT from the pod
+#                                 network, so CoreDNS could never sync
+#                                 against the API server and sat 0/1 Ready
+#                                 indefinitely. That live fix was never fed
+#                                 back into this script until a
+#                                 replacement-host reconstruction test
+#                                 exposed the gap — see
+#                                 bootstrap/cilium/home-k3s-values.yaml and
+#                                 docs/decisions/0013-home-k3s-persistent-environment.md.
 #
-# Deliberately NOT set: disable-kube-proxy, and Traefik/Flannel/NetworkPolicy
-# aside, nothing else is disabled — ServiceLB, local-path-provisioner, and
-# metrics-server all stay at K3s's defaults. See
+# Traefik/Flannel/NetworkPolicy/kube-proxy aside, nothing else is disabled
+# — ServiceLB, local-path-provisioner, and metrics-server all stay at K3s's
+# defaults. See
 # docs/decisions/0013-home-k3s-persistent-environment.md for the reasoning
 # behind every one of these.
 sudo mkdir -p "${CONFIG_DIR}"
@@ -70,6 +84,7 @@ disable-network-policy: true
 disable:
   - traefik
 write-kubeconfig-mode: "644"
+disable-kube-proxy: true
 EOF
 echo "==> wrote ${CONFIG_FILE}"
 

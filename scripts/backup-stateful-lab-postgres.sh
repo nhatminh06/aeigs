@@ -11,9 +11,13 @@
 # nothing here ever touches the database credential.
 #
 # See docs/runbooks/stateful-lab-postgresql-backup-restore.md.
+#
+# AEGIS_HOME_K3S_CONTEXT: same purpose as in
+# scripts/bootstrap-cilium-home-k3s.sh — lets this script safely target a
+# replacement-host reconstruction test. Unset, behavior is unchanged.
 set -euo pipefail
 
-EXPECTED_CONTEXT="home-k3s"
+EXPECTED_CONTEXT="${AEGIS_HOME_K3S_CONTEXT:-home-k3s}"
 NAMESPACE="stateful-lab"
 POD="postgresql-0"
 DB_USER="aegis"

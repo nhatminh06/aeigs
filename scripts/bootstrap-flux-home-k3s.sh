@@ -9,10 +9,15 @@
 # dev-kind's version since there's no other encrypted state here.
 #
 # Safe to re-run: every step is an apply or an idempotent recreate.
+#
+# AEGIS_HOME_K3S_KUBECONFIG / AEGIS_HOME_K3S_CONTEXT: same purpose as in
+# scripts/bootstrap-cilium-home-k3s.sh — lets this script safely target a
+# replacement-host reconstruction test without risking the primary
+# cluster's kubeconfig. Unset, behavior is unchanged.
 set -euo pipefail
 
-EXPECTED_CONTEXT="home-k3s"
-LOCAL_KUBECONFIG="${HOME}/.kube/home-k3s.yaml"
+EXPECTED_CONTEXT="${AEGIS_HOME_K3S_CONTEXT:-home-k3s}"
+LOCAL_KUBECONFIG="${AEGIS_HOME_K3S_KUBECONFIG:-${HOME}/.kube/home-k3s.yaml}"
 export KUBECONFIG="${LOCAL_KUBECONFIG}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FLUX_DIR="${REPO_ROOT}/clusters/home-k3s/flux-system"

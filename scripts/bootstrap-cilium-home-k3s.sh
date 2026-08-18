@@ -11,10 +11,18 @@
 # docs/decisions/0013-home-k3s-persistent-environment.md (home-k3s).
 #
 # Safe to re-run: helm upgrade --install is idempotent.
+#
+# AEGIS_HOME_K3S_KUBECONFIG / AEGIS_HOME_K3S_CONTEXT / AEGIS_CILIUM_DEVICE
+# exist for exactly one reason: proving Aegis can reconstruct home-k3s on
+# a replacement host without ever touching the primary cluster's
+# kubeconfig. Left unset, behavior is identical to before they existed.
+# AEGIS_CILIUM_DEVICE overrides bootstrap/cilium/home-k3s-values.yaml's
+# `devices: wlan0` only for the invocation — that file's committed
+# default stays wlan0 for the real host, unchanged.
 set -euo pipefail
 
-EXPECTED_CONTEXT="home-k3s"
-LOCAL_KUBECONFIG="${HOME}/.kube/home-k3s.yaml"
+EXPECTED_CONTEXT="${AEGIS_HOME_K3S_CONTEXT:-home-k3s}"
+LOCAL_KUBECONFIG="${AEGIS_HOME_K3S_KUBECONFIG:-${HOME}/.kube/home-k3s.yaml}"
 export KUBECONFIG="${LOCAL_KUBECONFIG}"
 
 # Same version dev-kind uses — already documented there as e2e-tested
@@ -51,6 +59,12 @@ if [ -z "${k8s_service_host}" ]; then
   exit 1
 fi
 
+helm_set_args=(--set k8sServiceHost="${k8s_service_host}" --set k8sServicePort=6443)
+if [ -n "${AEGIS_CILIUM_DEVICE:-}" ]; then
+  echo "==> overriding devices: ${AEGIS_CILIUM_DEVICE} (AEGIS_CILIUM_DEVICE set)"
+  helm_set_args+=(--set devices="${AEGIS_CILIUM_DEVICE}")
+fi
+
 echo "==> installing Cilium ${CILIUM_VERSION} on ${EXPECTED_CONTEXT}"
 echo "    apiserver: ${k8s_service_host}:6443"
 helm repo add cilium https://helm.cilium.io/ >/dev/null
@@ -59,8 +73,7 @@ helm upgrade --install cilium cilium/cilium \
   --version "${CILIUM_VERSION}" \
   --namespace kube-system \
   --values "${CILIUM_VALUES}" \
-  --set k8sServiceHost="${k8s_service_host}" \
-  --set k8sServicePort=6443 \
+  "${helm_set_args[@]}" \
   --wait --timeout 5m
 
 echo "==> waiting for Cilium and CoreDNS"
