@@ -60,11 +60,20 @@ Implemented:
 - home-k3s: a second, persistent environment (K3s + Cilium on a real
   Linux host, Flux, Kyverno, aegis-api pinned to a manually promoted
   known-good release) — a persistent foundation, not a production
-  cluster: single node, no HA, no Gateway/TLS/observability yet, no
-  backup. Proven live: full automatic recovery from both a K3s service
-  restart and a real host reboot, plus GitOps drift correction. See
-  docs/decisions/0013-home-k3s-persistent-environment.md and
-  docs/runbooks/home-k3s-recovery.md
+  cluster: single node, no HA. Proven live: full automatic recovery from
+  both a K3s service restart and a real host reboot, plus GitOps drift
+  correction. See docs/decisions/0013-home-k3s-persistent-environment.md
+  and docs/runbooks/home-k3s-recovery.md
+- Cilium Gateway API is installed and correctly configured on home-k3s
+  (CRDs, GatewayClass, a Gateway reaching Accepted+Programmed, an
+  Accepted HTTPRoute for aegis-api) but is **not usable**: every request
+  through it times out due to an upstream Cilium defect (the reserved
+  `ingress` identity's connection to the backend never completes its TCP
+  handshake), reproduced identically on Cilium 1.20.0 and 1.17.18 and
+  matching multiple open upstream reports. aegis-api on home-k3s remains
+  reachable only via `kubectl port-forward`. No TLS/observability was
+  attempted on top of a routing path that doesn't work. See
+  docs/decisions/0014-home-k3s-gateway-blocked-by-cilium-ingress-identity-bug.md
 - persistent PostgreSQL state on home-k3s (stateful-lab/postgresql/, its
   own namespace, never Authentik's database): a known data invariant
   survives Pod recreation, a StatefulSet rollout restart, a K3s service
@@ -98,7 +107,8 @@ Implemented:
 
 Planned:
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
-- Gateway/TLS/observability/Authentik on home-k3s
+- home-k3s TLS/observability/Authentik — blocked until the Cilium Gateway
+  defect above is resolved (upstream fix, or a different exposure model)
 - a second protected copy of the backup and SOPS age keys (currently
   single-machine-only)
 ```
