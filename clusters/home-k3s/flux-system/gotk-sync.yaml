@@ -1,0 +1,34 @@
+# Applied by scripts/bootstrap-flux-home-k3s.sh, not `flux bootstrap` —
+# same reasoning as clusters/dev-kind/flux-system/gotk-sync.yaml: that
+# command would commit and push a token-backed secretRef to this
+# repository, which home-k3s never needs (anonymous HTTPS read is
+# sufficient and already verified live for dev-kind).
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: flux-system
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  ref:
+    branch: main
+  # No secretRef: anonymous HTTPS read, same as dev-kind's own
+  # GitRepository/flux-system — see
+  # docs/decisions/0009-minimize-runtime-git-credentials.md. home-k3s is
+  # a Git *consumer* only; it has no write credential of any kind (see
+  # docs/decisions/0013-home-k3s-persistent-environment.md).
+  url: https://github.com/nhatminh06/aeigs.git
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: flux-system
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  path: ./clusters/home-k3s
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system

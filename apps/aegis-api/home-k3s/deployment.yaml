@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aegis-api
+  namespace: aegis-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aegis-api
+  template:
+    metadata:
+      labels:
+        app: aegis-api
+    spec:
+      # No Kubernetes API access needed, so no token to steal if the pod
+      # is compromised.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: aegis-api
+          # Manually promoted known-good digest — NOT Flux Image
+          # Automation. home-k3s has no ImageRepository/ImagePolicy/
+          # ImageUpdateAutomation and no Git write credential of any
+          # kind; dev-kind remains the only automated writer. Moving
+          # this line to a newer release is a deliberate human Git
+          # commit, made only after that release has been through
+          # dev-kind's full supply-chain + SLO loop. See
+          # docs/decisions/0013-home-k3s-persistent-environment.md.
+          #
+          # v0.1.5: fixes the v0.1.4 latency regression and adds a
+          # regression guard — see
+          # docs/runbooks/aegis-api-bad-release.md. Passed Trivy, SBOM
+          # generation, Cosign verification, and Kyverno admission on
+          # dev-kind before being promoted here.
+          image: ghcr.io/nhatminh06/aegis-api:v0.1.5@sha256:71404813fa3521ebbb1ff25ae2e8ab67613ab40f6939612c9af775db3c044e77
+          ports:
+            - name: http
+              containerPort: 8080
+          # Separate signals on purpose: liveness must not fail merely
+          # because the pod hasn't finished its startup warm-up.
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: aegis-api
+  namespace: aegis-api
+  labels:
+    app: aegis-api
+spec:
+  # ClusterIP only — no Gateway on home-k3s yet (Phase 1). Reached via
+  # kubectl port-forward for now; see
+  # docs/decisions/0013-home-k3s-persistent-environment.md.
+  type: ClusterIP
+  selector:
+    app: aegis-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
