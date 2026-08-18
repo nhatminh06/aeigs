@@ -6,9 +6,10 @@ home-k3s has proven persistent *cluster* lifecycle — K3s survives service
 restarts and reboots, Flux recovers desired state after drift — but until
 now, nothing had ever stored actual data on it. This answers a narrower
 question: does data written to a `local-path`-backed PVC survive Pod
-recreation, a K3s service restart, and a real host reboot? This is
-**not** a backup story. See `docs/decisions/0013-home-k3s-persistent-environment.md`
-for the platform context this builds on.
+recreation, a K3s service restart, and a real host reboot? **Yes — proven
+live across all four.** This is **not** a backup story. See
+`docs/decisions/0013-home-k3s-persistent-environment.md` for the
+platform context this builds on.
 
 ## Workload
 
@@ -47,10 +48,18 @@ Expected, always:
 | StatefulSet rollout restart | New Pod UID, no leftover Git drift | Unchanged |
 | K3s service restart | Full stack recovered automatically, API server reachable within seconds, no manual Postgres restart | Unchanged |
 | GitOps drift (scale to 2 replicas) | Flux reverted to `replicas: 1` in 28s | Unchanged (the surviving replica was always `-0`) |
-| Full host reboot | **Not performed this session** — deferred at the operator's request | N/A |
+| Full host reboot | Host rebooted (`uptime -s` confirmed a fresh boot); full stack (K3s, Cilium, CoreDNS, Flux, Kyverno, aegis-api, PostgreSQL) recovered automatically, no manual intervention | Unchanged — same PVC UID (`adeb161e-…`) before and after |
 
 Resource usage at steady state: ~19m CPU / ~19Mi memory — well under the
 100m/256Mi requests, nothing pathological.
+
+One side effect from the drift test worth recording: scaling the
+`StatefulSet` down from 2 replicas to 1 did **not** delete the
+now-unused `data-postgresql-1` PVC — StatefulSets don't reclaim PVCs on
+scale-down unless a `persistentVolumeClaimRetentionPolicy` says to.
+Harmless here (it was never mounted, confirmed via `Used By: <none>`
+before deleting it by hand), but a real operational detail rather than
+something to assume away in future scale-testing.
 
 ## Persistence model
 
@@ -58,7 +67,7 @@ Resource usage at steady state: ~19m CPU / ~19Mi memory — well under the
 |---|---|---|
 | Pod/container loss | **Safe** | Observed live — PVC persists independently of Pod identity. |
 | K3s service restart | **Safe** | Observed live. |
-| Full host reboot | **Not yet tested** | Deferred — same class of event already proven safe at the platform level (`docs/runbooks/home-k3s-recovery.md`), but not re-verified with actual data present. Do the reboot test before treating this row as proven. |
+| Full host reboot | **Safe** | Observed live — same `persistence_proof` rows, same PVC UID, before and after a real reboot of the host. |
 | PVC deletion | **NOT protected** | `local-path`'s `StorageClass` has `reclaimPolicy: Delete` (confirmed live on the actual `PV`) — deleting the PVC deletes the backing directory. Not tested; analysis only, per this milestone's own scope. |
 | Host disk loss | **NOT protected** | No backup exists. This is the key unresolved risk driving the next milestone. |
 

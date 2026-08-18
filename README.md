@@ -68,11 +68,10 @@ Implemented:
 - persistent PostgreSQL state on home-k3s (stateful-lab/postgresql/, its
   own namespace, never Authentik's database): a known data invariant
   survives Pod recreation, a StatefulSet rollout restart, a K3s service
-  restart, and GitOps drift correction — all proven live. Host-reboot
-  survival with real data present has not been re-tested yet (the
-  platform-level reboot test already passed without data on it). PVC
-  deletion and host disk loss are explicitly **not** protected — no
-  backup exists. See docs/runbooks/home-k3s-stateful-recovery.md
+  restart, GitOps drift correction, and a real full host reboot — all
+  proven live, same data before and after every one. PVC deletion and
+  host disk loss are explicitly **not** protected — no backup exists.
+  See docs/runbooks/home-k3s-stateful-recovery.md
 
 Planned:
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
