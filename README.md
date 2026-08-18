@@ -85,12 +85,22 @@ Implemented:
   run K3s before. Not automatic disaster recovery, not production
   recovery, not zero-touch restore — a human operator ran every step.
   See docs/runbooks/home-k3s-recovery.md
+- PostgreSQL backups are generated on a schedule (macOS launchd, two
+  per-user agents — every 6h for backups, daily for a full scratch
+  restore), encrypted off-host, retained according to a documented
+  policy (latest 14 verified + a permanently protected
+  disaster-recovery baseline), and every backup is automatically
+  checked (checksum, decryptability, archive structure) with a daily
+  full restore proving the data itself. Restore remains a manual,
+  operator-run step. Backup and SOPS age keys currently have no second
+  protected copy — flagged, not solved. See
+  docs/runbooks/stateful-lab-postgresql-backup-restore.md
 
 Planned:
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
 - Gateway/TLS/observability/Authentik on home-k3s
-- backup operations: scheduled encrypted logical backups, retention, and
-  automatic restore verification (evaluated before any PITR tooling)
+- a second protected copy of the backup and SOPS age keys (currently
+  single-machine-only)
 ```
 
 ## Owned workloads

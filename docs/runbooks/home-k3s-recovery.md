@@ -163,6 +163,15 @@ dedicated age key — see
 `docs/runbooks/stateful-lab-postgresql-backup-restore.md`. Do not expect
 `flux reconcile` to help here.
 
+**Checking whether backups themselves are healthy**: run
+`scripts/backup-status.sh` — it reports HEALTHY/STALE against the stated
+6h backup / 24h restore-verification objectives. Backups run on a
+schedule (two per-user launchd agents; see the backup runbook's
+"Scheduled backup operations" section) but restore itself is always a
+manual, operator-run step — a STALE status here does not mean data was
+lost, only that the safety net hasn't refreshed recently, most often
+because `cachyos` or this Mac was offline at the scheduled time.
+
 ## Common situations
 
 **"It was fine yesterday, now everything's unreachable."** Almost always

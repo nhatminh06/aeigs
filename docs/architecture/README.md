@@ -469,9 +469,44 @@ PVC/PV/data lost
 
 Full evidence (checksums, exact fingerprint match, the mandatory proof
 that Flux alone left the database empty) is in
-`docs/runbooks/stateful-lab-postgresql-backup-restore.md`. This is a
-manual, single point-in-time backup — no schedule, no retention, no
-PITR.
+`docs/runbooks/stateful-lab-postgresql-backup-restore.md`. Backup
+*creation* and its *verification* are now scheduled (see below); restore
+itself remains a deliberate, manual, operator-run step — no PITR, no WAL
+archiving, no automatic disaster recovery.
+
+### Scheduled backup operations
+
+```
+      CachyOS / home-k3s
+              |
+         PostgreSQL
+              |
+           pg_dump
+              |
+              v
+        Mac launchd scheduler (per-user LaunchAgents, not a
+              |                 Kubernetes CronJob — keeps database
+              |                 storage and backup storage in
+              |                 genuinely separate failure domains)
+        age encryption
+              |
+              v
+     immutable timestamped backups
+              |
+      +-------+-------+
+      |               |
+ retention       archive verification (every backup: checksum,
+ (latest 14 +      decrypt, pg_restore --list)
+  protected              |
+  baseline)              v
+                   scratch restore verification (daily: real restore
+                   into a throwaway database, fingerprint compared
+                   against that backup's own recorded value)
+```
+
+Recovery still depends on the same external roots as before — Git, the
+SOPS age key, the backup ciphertext, the backup age key, and GHCR for
+the application image — none of which this scheduling layer changes.
 
 ### Empty-host reconstruction
 
@@ -520,6 +555,16 @@ it's lost:
 | GHCR | External registry | `aegis-api` container image | Application reconstruction impacted; Kubernetes/database recovery unaffected |
 | Development CA key | Off-host (`~/.config/aegis/pki/`) | Gateway/TLS on dev-kind | **Not required for home-k3s** — no Gateway/TLS there yet |
 | Image-writer PAT | dev-kind only | Flux Image Automation writes | **Not required for home-k3s** — no writer credential exists there at all |
+
+Failure-domain view (which physical machine, if lost, takes what with
+it):
+
+| Machine lost | Consequence |
+|---|---|
+| CachyOS (K3s host) | Recoverable — proven live on a replacement host, given Git + the SOPS key + the off-host backup + backup key |
+| Mac (control workstation) | **The current single point of failure**: holds the only copies of both the backup ciphertext and the backup age key (and the SOPS age key). Losing it loses recoverability entirely until a second protected copy of both keys exists — see "Key redundancy" in `docs/runbooks/stateful-lab-postgresql-backup-restore.md`, currently unresolved. |
+| GitHub (Aegis Git) | Blocking for reconstruction until available again or a local mirror exists |
+| GHCR | Blocks pulling a new `aegis-api` image; already-running Pods and Kubernetes/database recovery are unaffected |
 
 ## Not present yet
 
