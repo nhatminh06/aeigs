@@ -2,3 +2,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: aegis-api
+  labels:
+    # Required for the home-k3s Gateway's allowedRoutes selector — see
+    # infrastructure/gateway/home-k3s/gateway.yaml.
+    aegis.dev/gateway-routes: "true"

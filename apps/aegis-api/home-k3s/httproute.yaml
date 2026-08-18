@@ -1,0 +1,35 @@
+# Phase 1 (HTTP-only, proving routing before TLS): attaches to the
+# Gateway's http listener directly. Once the HTTPS listener + certificate
+# exist, this switches to sectionName: https-api and a separate redirect
+# route takes over port 80 — same split as
+# infrastructure/gateway/httproute-redirect.yaml (dev-kind).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: aegis-api
+  namespace: aegis-api
+spec:
+  parentRefs:
+    - name: aegis
+      namespace: gateway
+      sectionName: http
+  hostnames:
+    - api.aegis.home.arpa
+  rules:
+    # Explicit public paths only — /metrics is deliberately not matched,
+    # so it 404s at the Gateway the same way an unknown hostname does.
+    # Prometheus reaches it directly through the Service via the
+    # ServiceMonitor, which doesn't go through the Gateway at all.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /healthz
+        - path:
+            type: PathPrefix
+            value: /readyz
+        - path:
+            type: PathPrefix
+            value: /api/v1/
+      backendRefs:
+        - name: aegis-api
+          port: 80
