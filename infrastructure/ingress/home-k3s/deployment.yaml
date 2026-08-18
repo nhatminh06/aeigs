@@ -1,0 +1,79 @@
+# Same hardened securityContext already proven in
+# ingress-lab/manifests/deployment.yaml. This is the permanent
+# replacement for the broken Cilium Gateway — an ordinary workload,
+# deliberately not going through Cilium's Gateway API.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingress-nginx
+  namespace: ingress-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingress-nginx
+  template:
+    metadata:
+      labels:
+        app: ingress-nginx
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: https
+              containerPort: 8443
+          volumeMounts:
+            - name: conf
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            - name: api-tls
+              mountPath: /etc/nginx/tls/api
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+          # tcpSocket, not httpGet: the default_server catch-all
+          # (configmap.yaml) always returns 404 for an unmatched
+          # Host header, which an httpGet probe would treat as failing.
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 2
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 5
+      volumes:
+        - name: conf
+          configMap:
+            name: ingress-nginx-conf
+        - name: api-tls
+          secret:
+            secretName: api-tls
+        - name: tmp
+          emptyDir: {}

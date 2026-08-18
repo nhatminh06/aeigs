@@ -1,0 +1,27 @@
+# NodePort — the same exposure mechanism ingress-lab already proved
+# working end-to-end (20/20 external requests) on this single-node
+# host. K3s's ServiceLB/a LoadBalancer Service would add nothing here:
+# there's exactly one node, so a LoadBalancer Service just becomes a
+# NodePort with an extra layer. See
+# docs/decisions/0015-home-k3s-nginx-ingress.md.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx
+  namespace: ingress-system
+spec:
+  type: NodePort
+  selector:
+    app: ingress-nginx
+  # Pinned rather than left to random allocation — a permanent,
+  # documented entry point is the point of this Service; an operator
+  # shouldn't have to `kubectl get svc` every time to find the port.
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      nodePort: 30080
+    - name: https
+      port: 8443
+      targetPort: https
+      nodePort: 30443

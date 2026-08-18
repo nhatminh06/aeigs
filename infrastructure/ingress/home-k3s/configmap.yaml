@@ -1,0 +1,63 @@
+# Permanent replacement for the broken Cilium Gateway
+# (docs/decisions/0014-home-k3s-gateway-blocked-by-cilium-ingress-identity-bug.md,
+# docs/decisions/0015-home-k3s-nginx-ingress.md). Grafana's server block
+# is added once observability exists — until then an unmatched hostname
+# (including grafana.aegis.home.arpa) correctly falls through to the
+# default 404 server, same as any other unknown host.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-nginx-conf
+  namespace: ingress-system
+data:
+  nginx.conf: |
+    worker_processes 1;
+    pid /tmp/nginx.pid;
+    events {
+      worker_connections 128;
+    }
+    http {
+      client_body_temp_path /tmp/client_body;
+      proxy_temp_path /tmp/proxy;
+      fastcgi_temp_path /tmp/fastcgi;
+      uwsgi_temp_path /tmp/uwsgi;
+      scgi_temp_path /tmp/scgi;
+
+      # Catches anything not matched by a server_name below —
+      # unknown-hostname requests, including plain IP access, get a
+      # plain 404 rather than being routed anywhere.
+      server {
+        listen 8080 default_server;
+        listen 8443 ssl default_server;
+        ssl_certificate     /etc/nginx/tls/api/tls.crt;
+        ssl_certificate_key /etc/nginx/tls/api/tls.key;
+        return 404;
+      }
+
+      server {
+        listen 8080;
+        server_name api.aegis.home.arpa;
+        return 301 https://$host$request_uri;
+      }
+
+      server {
+        listen 8443 ssl;
+        server_name api.aegis.home.arpa;
+        ssl_certificate     /etc/nginx/tls/api/tls.crt;
+        ssl_certificate_key /etc/nginx/tls/api/tls.key;
+
+        # Explicit public paths only — /metrics is deliberately not
+        # matched, so it falls through to the default_server 404 the
+        # same way an unknown hostname does. Prometheus reaches it
+        # directly through the Service, never through this proxy.
+        location /healthz {
+          proxy_pass http://aegis-api.aegis-api.svc.cluster.local:80/healthz;
+        }
+        location /readyz {
+          proxy_pass http://aegis-api.aegis-api.svc.cluster.local:80/readyz;
+        }
+        location /api/v1/ {
+          proxy_pass http://aegis-api.aegis-api.svc.cluster.local:80/api/v1/;
+        }
+      }
+    }

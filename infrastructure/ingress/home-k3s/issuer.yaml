@@ -1,0 +1,18 @@
+# Namespaced, not a ClusterIssuer: every certificate this environment
+# issues is consumed by ingress-system, same reasoning as
+# infrastructure/gateway/issuer.yaml (dev-kind).
+#
+# The CA key is not in Git. scripts/bootstrap-pki-home-k3s.sh restores
+# it into the Secret below from the SAME off-cluster material dev-kind
+# uses (~/.config/aegis/pki/) — see
+# docs/decisions/0015-home-k3s-nginx-ingress.md for why home-k3s and
+# dev-kind share one development trust domain instead of each having
+# their own root.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: aegis-dev-ca
+  namespace: ingress-system
+spec:
+  ca:
+    secretName: aegis-dev-ca

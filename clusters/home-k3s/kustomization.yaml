@@ -5,6 +5,6 @@ resources:
   - kyverno.yaml
   - kyverno-policies.yaml
   - cert-manager.yaml
-  - gateway.yaml
+  - ingress.yaml
   - aegis-api.yaml
   - stateful-lab.yaml

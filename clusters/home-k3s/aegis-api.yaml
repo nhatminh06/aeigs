@@ -11,11 +11,9 @@ spec:
   timeout: 2m
   # The signature policy needs to exist before the Deployment applies —
   # avoids a race where the first Pod could be admitted before Kyverno
-  # has anything to check it against. The HTTPRoute needs the Gateway's
-  # http listener to exist first too.
+  # has anything to check it against.
   dependsOn:
     - name: kyverno-policies
-    - name: gateway
   sourceRef:
     kind: GitRepository
     name: flux-system
