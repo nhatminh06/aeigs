@@ -1,0 +1,66 @@
+# Helm values for the Cilium install in scripts/bootstrap-cilium-home-k3s.sh.
+#
+# Deliberately NOT a copy of bootstrap/cilium/values.yaml (dev-kind) —
+# every value there was re-checked against home-k3s's actual environment
+# rather than assumed to carry over. See
+# docs/decisions/0013-home-k3s-persistent-environment.md for the
+# SHARED / DEV-KIND-ONLY / HOME-K3S-ONLY breakdown.
+#
+# kubeProxyReplacement started out disabled here (Phase 1 has no Gateway,
+# so nothing forced it) but had to be turned on after a real, observed
+# failure: with K3s's built-in kube-proxy left running alongside Cilium,
+# Service ClusterIPs were reachable from host network but NOT from the
+# pod network — CoreDNS could never sync against the API server's
+# ClusterIP and sat 0/1 Ready indefinitely. Switching to full
+# kube-proxy-replacement (K3s's kube-proxy disabled via
+# disable-kube-proxy: true, same as scripts/bootstrap-home-k3s.sh's host
+# config) is Cilium's own documented "Kubernetes Without kube-proxy" mode
+# and is what dev-kind already runs successfully — not added for parity,
+# added because the simpler coexistence mode empirically didn't work.
+kubeProxyReplacement: true
+
+# This host also has a Tailscale interface (MTU 1280) and a docker0
+# bridge alongside the real LAN interface. Left to auto-detect, Cilium
+# picked up tailscale0 as a candidate routing device and inherited its
+# 1280 MTU cluster-wide — plausible root cause of Service ClusterIPs
+# being unreachable from the pod network. Restricting to the actual LAN
+# device avoids Cilium routing/masquerading decisions being confused by
+# an unrelated VPN tunnel interface. dev-kind doesn't need this — kind's
+# nodes are Docker containers with no competing interfaces.
+devices: wlan0
+
+# Single node — there is no second node to tunnel to, so the VXLAN
+# overlay (the chart's default) is pure unneeded complexity here. Native
+# routing removes a whole layer that was a plausible factor in the
+# ClusterIP-from-pod-network failures debugged live against this host.
+routingMode: native
+ipv4NativeRoutingCIDR: "10.42.0.0/16"
+
+# Auto-detection still picked up 1280 (Tailscale's tunnel MTU) even with
+# devices restricted to wlan0 above — MTU detection apparently isn't
+# limited to the configured device list. wlan0's real MTU, confirmed live
+# from the host (`cat /sys/class/net/wlan0/mtu`), is 1500 — the ordinary
+# Ethernet/Wi-Fi default. Set explicitly rather than trusting
+# auto-detection on a host with multiple candidate interfaces.
+MTU: 1500
+
+ipam:
+  # dev-kind uses `mode: kubernetes` (leans on kind's own per-node PodCIDR
+  # assignment). K3s's node IPAM doesn't provide that the same way, so
+  # this follows Cilium's own official K3s install guide instead:
+  # cluster-pool (the chart default operator-managed allocator), pinned to
+  # K3s's default pod CIDR so it doesn't drift from what K3s itself
+  # assumes.
+  operator:
+    clusterPoolIPv4PodCIDRList:
+      - "10.42.0.0/16"
+
+operator:
+  # Single node — the chart's default 2 replicas + anti-affinity would
+  # leave the second Pending forever, same reasoning as dev-kind.
+  replicas: 1
+
+# No gatewayAPI, no hubble.relay override here: Phase 1 has no Gateway on
+# home-k3s, and Hubble Relay isn't needed to prove persistent-cluster
+# lifecycle. Both stay at the chart's defaults rather than being copied
+# from dev-kind for parity alone.
