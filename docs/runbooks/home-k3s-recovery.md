@@ -63,6 +63,19 @@ it deliberately first.
    validation path only, not the long-term access method — see the ADR)
    then `curl localhost:18080/api/v1/info` and confirm the version/commit
    match the digest pinned in `apps/aegis-api/home-k3s/deployment.yaml`.
+9. **Stateful lab (PostgreSQL)**:
+   ```
+   kubectl -n stateful-lab get pvc data-postgresql-0    # Bound
+   kubectl -n stateful-lab get pod postgresql-0          # 1/1 Running
+   kubectl -n stateful-lab exec postgresql-0 -- \
+     psql -U aegis -d aegis_state -c \
+     "SELECT id, value FROM persistence_proof ORDER BY id;"
+   ```
+   Expected exactly two rows: `1 | aegis-persistence-proof` and
+   `2 | home-k3s-postgresql-lab`. See
+   `docs/runbooks/home-k3s-stateful-recovery.md` for what this does and
+   does not protect against — do not treat a healthy Pod as proof the
+   data survived; query it.
 
 ## Common situations
 

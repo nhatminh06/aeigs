@@ -65,11 +65,19 @@ Implemented:
   restart and a real host reboot, plus GitOps drift correction. See
   docs/decisions/0013-home-k3s-persistent-environment.md and
   docs/runbooks/home-k3s-recovery.md
+- persistent PostgreSQL state on home-k3s (stateful-lab/postgresql/, its
+  own namespace, never Authentik's database): a known data invariant
+  survives Pod recreation, a StatefulSet rollout restart, a K3s service
+  restart, and GitOps drift correction — all proven live. Host-reboot
+  survival with real data present has not been re-tested yet (the
+  platform-level reboot test already passed without data on it). PVC
+  deletion and host disk loss are explicitly **not** protected — no
+  backup exists. See docs/runbooks/home-k3s-stateful-recovery.md
 
 Planned:
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
 - Gateway/TLS/observability/Authentik on home-k3s
-- persistent application state on home-k3s, then backup and disaster-recovery drills
+- backup + destructive restore drill for the PostgreSQL persistence lab
 ```
 
 ## Owned workloads

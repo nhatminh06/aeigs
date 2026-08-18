@@ -394,6 +394,43 @@ health checks are in `docs/runbooks/home-k3s-recovery.md`.
 Prometheus/Grafana, SLO rules, any image automation. See "Not present
 yet" below and the ADR's environment-comparison table.
 
+### Persistent application state (stateful-lab)
+
+A single PostgreSQL `StatefulSet` (`stateful-lab/postgresql/`, its own
+`stateful-lab` namespace — never Authentik's database) proves data on a
+`local-path` PVC survives Pod recreation, a K3s service restart, and
+GitOps drift correction. This chain is deliberately drawn separate from
+the Git/Flux one above — Git recreates Kubernetes objects, it does not
+contain or restore database rows:
+
+```
+PostgreSQL (stateful-lab/postgresql/)
+        |
+        v
+   PersistentVolumeClaim (1Gi, StorageClass local-path)
+        |
+        v
+   PersistentVolume (rancher.io/local-path provisioner)
+        |
+        v
+   /var/lib/rancher/k3s/storage/<pv-name> on the CachyOS disk
+```
+
+versus, separately:
+
+```
+Aegis Git (StatefulSet/Service/PVC declaration, encrypted Secret)
+        |
+        v
+   Flux -> recreates the Kubernetes objects above
+        |
+        X  -- does NOT recreate the rows inside PostgreSQL's data files
+```
+
+Full results, the persistence/failure model, and what remains
+unprotected (PVC deletion, host disk loss — no backup exists yet) are in
+`docs/runbooks/home-k3s-stateful-recovery.md`.
+
 ## Not present yet
 
 Namespace-wide default deny, egress policy, and L7 policy (only the
