@@ -471,7 +471,55 @@ Full evidence (checksums, exact fingerprint match, the mandatory proof
 that Flux alone left the database empty) is in
 `docs/runbooks/stateful-lab-postgresql-backup-restore.md`. This is a
 manual, single point-in-time backup — no schedule, no retention, no
-PITR, and a wiped *volume* was proven recoverable, not yet a wiped host.
+PITR.
+
+### Empty-host reconstruction
+
+Proven live on a disposable Lima VM (never `cachyos` itself — see
+`docs/runbooks/home-k3s-recovery.md`'s "Empty host recovery"): a Linux
+host that has never run K3s can reach a fully working `home-k3s`,
+including the exact restored database, using only external roots — none
+of `cachyos`'s own disk is read or copied:
+
+```
+                       GitHub (Aegis Git)
+                            |
+                          Flux
+                            |
+                replacement home-k3s (empty host)
+                            |
+                     fresh local-path
+                            |
+                       PostgreSQL
+                            ^
+                            |
+                  encrypted backup + its own age key
+                            |
+                     Mac / off-host
+```
+
+A second, independent root feeds Git decryption specifically:
+
+```
+SOPS age key (off-host, off-cluster)
+        |
+        v
+  decrypts Secret objects Git carries (e.g. stateful-lab's
+  postgresql credential) once Flux applies them
+```
+
+Recovery dependency table — what each root is for, and what happens if
+it's lost:
+
+| Asset | Stored where | Required for | If lost |
+|---|---|---|---|
+| Aegis Git repository | GitHub | Kubernetes desired state | Blocking — nothing rebuilds without it (unless a separate clone/mirror exists) |
+| SOPS age private key | Off-host (`~/.config/sops/age/`) | Decrypting Git-managed `Secret` objects | Blocking — encrypted Secrets stay undecryptable forever |
+| PostgreSQL backup artifact | Off-host (Mac, `~/.local/share/aegis/backups/`) | Database schema + rows | Blocking for data recovery — infrastructure still rebuilds, database stays empty |
+| PostgreSQL backup age key | Off-host (`~/.config/aegis/backup/age/`) | Decrypting the backup artifact | Blocking — the backup file alone is useless without it |
+| GHCR | External registry | `aegis-api` container image | Application reconstruction impacted; Kubernetes/database recovery unaffected |
+| Development CA key | Off-host (`~/.config/aegis/pki/`) | Gateway/TLS on dev-kind | **Not required for home-k3s** — no Gateway/TLS there yet |
+| Image-writer PAT | dev-kind only | Flux Image Automation writes | **Not required for home-k3s** — no writer credential exists there at all |
 
 ## Not present yet
 

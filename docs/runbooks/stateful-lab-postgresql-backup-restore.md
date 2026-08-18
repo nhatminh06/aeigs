@@ -158,6 +158,40 @@ repeated — both were already proven safe for data in the prior milestone
 against a different PVC identity; re-running them here would not add new
 evidence.
 
+## Second proof: restoring onto a replacement host
+
+The destructive restore above reused the same, already-running
+`cachyos` cluster — a new PVC, but the same physical disk and the same
+K3s installation. That leaves one question unanswered: does this backup
+actually work anywhere, or only on the machine that made it? Answered
+live, same day, same backup artifact, against a genuinely empty Lima VM
+that had never run K3s before (`docs/runbooks/home-k3s-recovery.md`'s
+"Empty host recovery" section covers the full Kubernetes-level
+reconstruction; this is the database-specific part of that same test):
+
+- **Storage identity, confirmed unrelated to both prior ones**: PVC UID
+  `ed016a93-a1dd-413e-9da4-764a6cc0f00c` on PV
+  `pvc-ed016a93-a1dd-413e-9da4-764a6cc0f00c` — distinct from both the
+  original destroyed identity (`adeb161e-...`) and the same-host restore
+  identity (`5715dccc-...`).
+- **Mandatory pre-restore proof, repeated on the new host**: `\dt` found
+  no relations; `SELECT * FROM persistence_proof` failed with `relation
+  "persistence_proof" does not exist`.
+- **The exact same backup file and checksum were reused** — no new
+  backup was created for this test, matching the point being proven
+  (this artifact, made once, is independently useful anywhere).
+- **`scripts/restore-stateful-lab-postgres.sh` needed one real fix**: it
+  hardcoded the context name `home-k3s`, which would have made it
+  refuse to run against a second cluster at all (or, worse, silently
+  targeted the wrong one if the names had been made to match). Now
+  reads `AEGIS_HOME_K3S_CONTEXT`, defaulting to today's exact value —
+  see the script's own comment.
+- **Fingerprint after restore**:
+  `97056e51cfb5de13169d52a122a67d067886e13352cc2bfe11605a95b858b54a` —
+  identical to both the original and the same-host restore.
+- **Survived a real reboot of the replacement host** (not `cachyos`):
+  full automatic recovery, same data, confirmed after the VM came back.
+
 ## Timings (lab measurements, not RTO/RPO commitments)
 
 - Backup: ~1s
@@ -197,14 +231,15 @@ K3s / local-path provides: fresh node-local storage for Git's declared PVC
 | Host reboot | Protected — local disk persists (prior milestone) |
 | PVC deletion | **Recoverable from backup** — proven live above |
 | PV / backing-directory loss | **Recoverable from backup** — same proof, since that's exactly what was destroyed |
-| Host disk loss | Database recoverable *if* a new K3s environment, Git, the SOPS age key, the backup file, and the backup age key are all available — **not tested as a combined, wiped-host scenario** |
+| Primary K3s host loss | **Recoverable — proven on a replacement host**: a genuinely empty machine, given only Git + the SOPS age key + this backup + its backup age key, reconstructed the platform and the exact data. See "Second proof" above and `docs/runbooks/home-k3s-recovery.md`. |
 
 ## What this does not claim
 
 **"Destructive database restore proven from an independent off-host
-logical backup."** Not "disaster recovery complete," not "zero data
-loss," not "production database backups." Specifically still true after
-this milestone:
+logical backup, including on a genuinely empty replacement host."** Not
+"disaster recovery complete," not "zero data loss," not "production
+database backups," not "unattended/automatic recovery" — every step was
+run by a human operator. Specifically still true after this milestone:
 
 - Backup is manual — no schedule, no CronJob, no automation.
 - No retention policy; every backup is a permanent, individually-named
@@ -213,8 +248,11 @@ this milestone:
 - Single backup target, itself with no independent backup.
 - The backup age key has no second, independent copy yet.
 - Single-node K3s; `local-path` storage remains node-local.
-- A full wiped-host rebuild-plus-restore has not been proven — only a
-  wiped *volume* on an already-running host.
+- Empty-replacement-host reconstruction is proven on a disposable Lima
+  VM, not by actually wiping and reinstalling `cachyos` itself — a
+  deliberate safety boundary for this milestone, not evidence the real
+  hardware path is untested-and-therefore-suspect, just genuinely
+  distinct from "reformat the real laptop."
 - No Gateway/TLS/monitoring/Authentik on home-k3s; manual release
   promotion remains.
 

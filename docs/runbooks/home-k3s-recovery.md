@@ -18,9 +18,83 @@ This is the normal case and is proven live (see the ADR).
 (`scripts/bootstrap-home-k3s.sh`), Cilium re-bootstrapped
 (`scripts/bootstrap-cilium-home-k3s.sh`), Flux re-bootstrapped
 (`scripts/bootstrap-flux-home-k3s.sh`) — Git rebuilds the workload state
-from there, same as `dev-kind`. This has **not** been tested as of this
-writing; do not assume it works identically to a reboot without trying
-it deliberately first.
+from there, same as `dev-kind`. **Proven live** on a genuinely empty
+replacement host (a disposable Lima VM, never `cachyos` itself) — see
+"Empty host recovery" below and
+`docs/runbooks/stateful-lab-postgresql-backup-restore.md` for the
+database side of that same test.
+
+## Empty host recovery
+
+Proven live, once, 2026-08-18, against a disposable Lima VM (`cachyos`
+was never touched). Full sequence:
+
+```
+prepare a Linux host that has NEVER run K3s
+        |
+        v
+scripts/bootstrap-home-k3s.sh          (on the target host — installs
+        |                                pinned K3s, needs sudo)
+        v
+fetch its kubeconfig into a SEPARATE file/context — never overwrite
+~/.kube/home-k3s.yaml or reuse the "home-k3s" context name for a
+recovery target
+        |
+        v
+scripts/bootstrap-cilium-home-k3s.sh   (AEGIS_HOME_K3S_KUBECONFIG /
+        |                                AEGIS_HOME_K3S_CONTEXT /
+        |                                AEGIS_CILIUM_DEVICE env vars
+        |                                point this at the recovery
+        |                                cluster without risking the
+        |                                real one)
+        v
+restore the SOPS age identity (existing key — verify its public
+recipient matches .sops.yaml; never generate a new one)
+        |
+        v
+scripts/bootstrap-flux-home-k3s.sh     (same env var overrides; no
+        |                                `flux bootstrap github`,
+        |                                anonymous Git read, root path
+        |                                ./clusters/home-k3s)
+        v
+Flux reconstructs Kyverno -> policies -> aegis-api -> stateful-lab,
+unassisted
+        |
+        v
+verify Kyverno actually enforces (signed digest -> ALLOWED, unsigned ->
+DENIED) before trusting aegis-api — a Running Pod alone isn't proof
+        |
+        v
+verify the fresh PostgreSQL database is EMPTY before touching any
+backup — this is the proof Git didn't smuggle in data
+        |
+        v
+scripts/restore-stateful-lab-postgres.sh (AEGIS_HOME_K3S_CONTEXT set;
+                                           reuses the EXISTING off-host
+                                           backup — never create a new
+                                           one from the recovery host)
+```
+
+Required external inputs (see `docs/architecture/README.md`'s recovery
+dependency table for the full picture): the Git repository itself, the
+SOPS age private key, the PostgreSQL backup artifact, and its dedicated
+backup age key. Nothing from the old host's disk — no copied
+`/var/lib/rancher/k3s`, no copied `local-path` directory, no copied
+kubeconfig — is used or needed.
+
+Two real gaps this test found and fixed (not hypothetical — the
+committed scripts would have reproduced already-solved bugs without
+these): the committed `bootstrap-home-k3s.sh` was missing
+`disable-kube-proxy: true`, present only as a live, undocumented fix on
+`cachyos`; and the recovery target's actual network interface name
+differs from `cachyos`'s `wlan0`, handled via `AEGIS_CILIUM_DEVICE`
+rather than changing the primary host's committed Cilium values.
+
+**What this proves**: an empty replacement Linux host can reconstruct
+`home-k3s` from committed Aegis state and independently restore
+PostgreSQL data from an encrypted off-host backup. **What it does not
+prove**: unattended/automatic disaster recovery, HA, or a production
+RTO — every step above was run by a human operator.
 
 ## Prerequisites
 

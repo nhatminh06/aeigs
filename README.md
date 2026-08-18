@@ -77,14 +77,20 @@ Implemented:
   rebuilt only the Kubernetes objects (confirmed empty — no database rows),
   and `pg_restore` from the off-host backup brought back the exact
   original data. Manual, single point-in-time backup only — no schedule,
-  no retention, no PITR, and a wiped *volume* was proven recoverable, not
-  yet a wiped host. See docs/runbooks/stateful-lab-postgresql-backup-restore.md
+  no retention, no PITR. See docs/runbooks/stateful-lab-postgresql-backup-restore.md
+- home-k3s has been reconstructed on an empty replacement Linux host (a
+  disposable Lima VM — `cachyos` itself was never touched) and the
+  stateful PostgreSQL lab restored from the same independent encrypted
+  off-host backup: same exact fingerprint, on a machine that had never
+  run K3s before. Not automatic disaster recovery, not production
+  recovery, not zero-touch restore — a human operator ran every step.
+  See docs/runbooks/home-k3s-recovery.md
 
 Planned:
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
 - Gateway/TLS/observability/Authentik on home-k3s
-- full wiped-host reconstruction + database restore drill (proving recovery
-  from a genuinely empty machine, not just a wiped volume on a running one)
+- backup operations: scheduled encrypted logical backups, retention, and
+  automatic restore verification (evaluated before any PITR tooling)
 ```
 
 ## Owned workloads
