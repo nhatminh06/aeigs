@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template — do not load this file directly. Generated into a
+  user-specific plist by scripts/manage-backup-scheduler.sh, which
+  substitutes __REPO_ROOT__ and __HOME__ for this machine's actual
+  paths. No secrets here: only file paths and the kubeconfig location
+  (a path, not a credential — the credential lives inside that file
+  with 0600 permissions).
+
+  StartCalendarInterval, not StartInterval: per Apple's own launchd
+  documentation, a StartCalendarInterval job missed while the Mac is
+  ASLEEP runs on wake; one missed while the Mac is fully OFF simply
+  waits for the next scheduled time. StartInterval jobs have no
+  documented wake-catchup behavior. Four entries approximate "every 6
+  hours" using calendar semantics.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.aegis.stateful-lab-backup</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__REPO_ROOT__/scripts/run-stateful-lab-backup.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>0</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Hour</key><integer>12</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Hour</key><integer>18</integer><key>Minute</key><integer>15</integer></dict>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>__HOME__</string>
+        <key>KUBECONFIG</key>
+        <string>__HOME__/.kube/home-k3s.yaml</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/.local/state/aegis/logs/stateful-lab-backup.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/.local/state/aegis/logs/stateful-lab-backup.launchd.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

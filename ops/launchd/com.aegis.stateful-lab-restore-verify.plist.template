@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template — see com.aegis.stateful-lab-backup.plist.template for the
+  StartCalendarInterval/environment reasoning. This agent runs the
+  cheaper archive checks' stronger counterpart — a real scratch
+  restore — once a day rather than every backup, since it costs more
+  (creates and drops a real database on the live PostgreSQL instance).
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.aegis.stateful-lab-restore-verify</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__REPO_ROOT__/scripts/verify-stateful-lab-backup-restore.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>__HOME__</string>
+        <key>KUBECONFIG</key>
+        <string>__HOME__/.kube/home-k3s.yaml</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/.local/state/aegis/logs/stateful-lab-restore-verify.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/.local/state/aegis/logs/stateful-lab-restore-verify.launchd.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
