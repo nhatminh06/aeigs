@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gateway
+  labels:
+    # This namespace hosts httproute-redirect.yaml, so it has to satisfy
+    # the Gateway's own allowedRoutes selector like any other route
+    # namespace — same reasoning as infrastructure/gateway/namespace.yaml
+    # (dev-kind).
+    aegis.dev/gateway-routes: "true"

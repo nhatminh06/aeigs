@@ -1,0 +1,19 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: gateway
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./infrastructure/gateway/home-k3s
+  prune: true
+  wait: true
+  timeout: 2m
+  # This directory will contain Issuer and Certificate resources, so the
+  # CRDs installed by the cert-manager HelmRelease have to exist first —
+  # same reasoning as clusters/dev-kind/infrastructure.yaml.
+  dependsOn:
+    - name: cert-manager
+  sourceRef:
+    kind: GitRepository
+    name: flux-system

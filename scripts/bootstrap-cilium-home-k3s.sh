@@ -28,6 +28,9 @@ export KUBECONFIG="${LOCAL_KUBECONFIG}"
 # Same version dev-kind uses — already documented there as e2e-tested
 # against Kubernetes 1.36, which is what K3s v1.36.3+k3s1 runs too.
 CILIUM_VERSION="1.20.0"
+# Same pin as scripts/bootstrap-cilium.sh (dev-kind) — one Gateway API
+# surface across both environments.
+GATEWAY_API_VERSION="v1.6.1"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CILIUM_VALUES="${REPO_ROOT}/bootstrap/cilium/home-k3s-values.yaml"
 
@@ -58,6 +61,17 @@ if [ -z "${k8s_service_host}" ]; then
   echo "error: could not determine the node InternalIP for k8sServiceHost" >&2
   exit 1
 fi
+
+# Gateway API CRDs are applied from pinned raw manifests, same as
+# scripts/bootstrap-cilium.sh (dev-kind) and for the same reason: Cilium's
+# chart doesn't ship them, and Cilium's Gateway support needs them to
+# exist before the Helm install runs.
+echo "==> installing Gateway API CRDs ${GATEWAY_API_VERSION}"
+gw_base="https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${GATEWAY_API_VERSION}/config/crd"
+for crd in gatewayclasses gateways httproutes referencegrants grpcroutes backendtlspolicies; do
+  kubectl apply -f "${gw_base}/standard/gateway.networking.k8s.io_${crd}.yaml"
+done
+kubectl apply -f "${gw_base}/experimental/gateway.networking.k8s.io_tlsroutes.yaml"
 
 helm_set_args=(--set k8sServiceHost="${k8s_service_host}" --set k8sServicePort=6443)
 if [ -n "${AEGIS_CILIUM_DEVICE:-}" ]; then

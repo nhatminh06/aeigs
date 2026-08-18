@@ -1,0 +1,26 @@
+# home-k3s-specific — hostnames, listener set and namespace differ enough
+# from infrastructure/gateway/ (dev-kind) that this is a deliberate
+# duplicate, not a shared base, following the same per-cluster pattern
+# already used for Cilium values and apps/aegis-api/home-k3s/ (see
+# docs/decisions/0013-home-k3s-persistent-environment.md).
+#
+# HTTPS listeners are added once plain HTTP routing is proven — see
+# docs/runbooks/home-k3s-gateway-tls.md.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: aegis
+  namespace: gateway
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: "*.aegis.home.arpa"
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              aegis.dev/gateway-routes: "true"

@@ -60,7 +60,19 @@ operator:
   # leave the second Pending forever, same reasoning as dev-kind.
   replicas: 1
 
-# No gatewayAPI, no hubble.relay override here: Phase 1 has no Gateway on
-# home-k3s, and Hubble Relay isn't needed to prove persistent-cluster
-# lifecycle. Both stay at the chart's defaults rather than being copied
-# from dev-kind for parity alone.
+# No hubble.relay override here: Hubble Relay isn't needed to prove
+# persistent-cluster lifecycle, and a single-node cluster has only one
+# agent to query directly. Stays at the chart's default rather than being
+# copied from dev-kind for parity alone.
+
+# Gateway/TLS milestone: home-k3s gets its own Gateway, exposed the same
+# way dev-kind's is — Envoy bound to the node's network. Unlike dev-kind
+# (a container with no LoadBalancer implementation and kind port
+# mappings), home-k3s is bare metal with a real LAN IP: hostNetwork here
+# means "bind cachyos's actual interfaces," which is exactly the stable
+# LAN reachability this needs, without adding MetalLB/ServiceLB for a
+# single node that doesn't otherwise use a LoadBalancer Service.
+gatewayAPI:
+  enabled: true
+  hostNetwork:
+    enabled: true

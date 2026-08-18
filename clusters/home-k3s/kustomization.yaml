@@ -4,5 +4,7 @@ resources:
   - ./flux-system
   - kyverno.yaml
   - kyverno-policies.yaml
+  - cert-manager.yaml
+  - gateway.yaml
   - aegis-api.yaml
   - stateful-lab.yaml
