@@ -28,7 +28,7 @@ for arg in "$@"; do
 done
 
 # --- path safety: this is the most destructive script in the milestone ---
-resolved_root="$(cd "${BACKUP_ROOT}" 2>/dev/null && pwd || true)"
+resolved_root="$(cd "${BACKUP_ROOT}" 2>/dev/null && pwd)" || resolved_root=""
 if [ -z "${resolved_root}" ]; then
   echo "error: backup root '${BACKUP_ROOT}' does not exist or is not a directory" >&2
   exit 1
