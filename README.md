@@ -325,8 +325,8 @@ Flux:                    v2.9.4
 Cilium:                  1.20.0
 Kyverno:                 v1.18.2 (chart 3.8.2)
 cert-manager:             v1.21.1
-kube-prometheus-stack:   88.3.0
-Authentik:               2026.5.6
+kube-prometheus-stack:   88.5.0
+Authentik:               2026.8.0
 PostgreSQL:               17-alpine
 ```
 
