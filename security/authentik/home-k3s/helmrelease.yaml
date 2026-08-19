@@ -16,6 +16,14 @@ spec:
   # against a fresh database — observed live taking ~6m. 10m gives real
   # headroom over that measurement, not a guess.
   timeout: 10m0s
+  install:
+    # Default remediation gives up after one failed attempt (observed
+    # live: a first install that only narrowly missed the old 5m0s
+    # timeout was left permanently "Stalled" rather than retried).
+    # A few retries costs nothing once the timeout itself is already
+    # generous.
+    remediation:
+      retries: 3
   chart:
     spec:
       # Same pin as dev-kind — this is a migration, not an upgrade
