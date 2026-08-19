@@ -25,6 +25,7 @@
 # scripts/bootstrap-cilium-home-k3s.sh — lets this script safely target a
 # replacement-host reconstruction test. Unset, behavior is unchanged.
 set -euo pipefail
+umask 077
 
 EXPECTED_CONTEXT="${AEGIS_HOME_K3S_CONTEXT:-home-k3s}"
 NAMESPACE="authentik"
@@ -79,7 +80,7 @@ else
 fi
 
 plaintext_dump="$(mktemp)"
-remote_dump_path="/tmp/restore-authentik-$$.dump"
+remote_dump_path="$(kubectl -n "${NAMESPACE}" exec "${POD}" -- mktemp)"
 cleanup() {
   rm -f "${plaintext_dump}"
   kubectl -n "${NAMESPACE}" exec "${POD}" -- rm -f "${remote_dump_path}" >/dev/null 2>&1 || true

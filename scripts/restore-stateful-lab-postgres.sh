@@ -19,6 +19,7 @@
 # scripts/bootstrap-cilium-home-k3s.sh — lets this script safely target a
 # replacement-host reconstruction test. Unset, behavior is unchanged.
 set -euo pipefail
+umask 077
 
 EXPECTED_CONTEXT="${AEGIS_HOME_K3S_CONTEXT:-home-k3s}"
 NAMESPACE="stateful-lab"

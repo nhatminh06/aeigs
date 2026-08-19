@@ -13,6 +13,7 @@
 #
 # See docs/runbooks/home-k3s-authentik.md.
 set -euo pipefail
+umask 077
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKUP_SCRIPT="${REPO_ROOT}/scripts/backup-authentik-postgres.sh"
@@ -120,7 +121,7 @@ fi
 # pod's own /tmp (writable emptyDir), then exec against that local
 # path instead of piping stdin, so kubectl never has to duplex a large
 # stdin against stdout at the same time.
-remote_check_path="/tmp/verify-$$.dump"
+remote_check_path="$(kubectl -n "${NAMESPACE}" exec "${POD}" -- mktemp 2>>"${LOG_FILE}")"
 if ! kubectl -n "${NAMESPACE}" cp "${plaintext_check}" "${POD}:${remote_check_path}" >>"${LOG_FILE}" 2>&1; then
   log "FAILED: could not copy archive into ${POD} for verification"
   write_status "last_error_summary" "kubectl cp failed during verification at $(now_iso)"

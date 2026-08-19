@@ -13,6 +13,7 @@
 #
 # See docs/runbooks/home-k3s-authentik.md.
 set -euo pipefail
+umask 077
 
 EXPECTED_CONTEXT="${AEGIS_HOME_K3S_CONTEXT:-home-k3s}"
 NAMESPACE="authentik"
@@ -126,7 +127,7 @@ log "==> restoring into scratch database"
 # consistently) — same workaround as run-authentik-backup.sh: copy the
 # plaintext dump into the pod's own /tmp first, then exec against that
 # local path instead of duplexing a large stdin against stdout.
-remote_restore_path="/tmp/restore-verify-$$.dump"
+remote_restore_path="$(kubectl -n "${NAMESPACE}" exec "${POD}" -- mktemp 2>>"${LOG_FILE}")"
 kubectl -n "${NAMESPACE}" cp "${plaintext_dump}" "${POD}:${remote_restore_path}" >>"${LOG_FILE}" 2>&1
 restore_status=0
 kubectl -n "${NAMESPACE}" exec "${POD}" -- \

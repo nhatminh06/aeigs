@@ -12,6 +12,7 @@
 #
 # See docs/runbooks/stateful-lab-postgresql-backup-restore.md.
 set -euo pipefail
+umask 077
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKUP_SCRIPT="${REPO_ROOT}/scripts/backup-stateful-lab-postgres.sh"

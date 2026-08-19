@@ -14,6 +14,7 @@
 #
 # See docs/runbooks/stateful-lab-postgresql-backup-restore.md.
 set -euo pipefail
+umask 077
 
 EXPECTED_CONTEXT="${AEGIS_HOME_K3S_CONTEXT:-home-k3s}"
 NAMESPACE="stateful-lab"

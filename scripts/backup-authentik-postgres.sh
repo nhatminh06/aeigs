@@ -23,6 +23,7 @@
 #
 # See docs/runbooks/home-k3s-authentik.md.
 set -euo pipefail
+umask 077
 
 EXPECTED_CONTEXT="${AEGIS_HOME_K3S_CONTEXT:-home-k3s}"
 NAMESPACE="authentik"
