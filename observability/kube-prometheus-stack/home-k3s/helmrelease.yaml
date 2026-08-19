@@ -97,6 +97,36 @@ spec:
             memory: 256Mi
           limits:
             memory: 512Mi
+        # Observed live: the operator's default probes (liveness
+        # timeoutSeconds=3, failureThreshold=6 -> ~30s budget) were too
+        # tight for this host — a real, sustained crash loop (17
+        # restarts, hundreds of readiness failures over several hours)
+        # where WAL-replay CPU contention on a 12-core laptop competing
+        # with the rest of the platform meant Prometheus couldn't answer
+        # its own HTTP health check in time, got killed, and had to
+        # replay the WAL again on the next attempt — a self-perpetuating
+        # loop, not a one-off blip. `containers:` here strategic-merges
+        # into the operator-generated container spec by name (verified
+        # via `helm template` against the rendered Prometheus CR before
+        # applying), not a raw pod-spec hack.
+        containers:
+          - name: prometheus
+            livenessProbe:
+              httpGet:
+                path: /-/healthy
+                port: http-web
+              initialDelaySeconds: 30
+              periodSeconds: 15
+              timeoutSeconds: 10
+              failureThreshold: 6
+            readinessProbe:
+              httpGet:
+                path: /-/ready
+                port: http-web
+              initialDelaySeconds: 10
+              periodSeconds: 15
+              timeoutSeconds: 10
+              failureThreshold: 6
     prometheusOperator:
       resources:
         requests:
