@@ -78,9 +78,20 @@ Implemented:
   small proxy replaces it instead of a deeper workaround. Proven live
   end to end, including a real host reboot with every layer (ingress,
   TLS, Prometheus/Grafana, PostgreSQL, backup scheduler) recovering
-  automatically. Local Grafana login only — no Authentik on home-k3s
-  yet. See docs/decisions/0014-home-k3s-gateway-blocked-by-cilium-ingress-identity-bug.md
+  automatically. See docs/decisions/0014-home-k3s-gateway-blocked-by-cilium-ingress-identity-bug.md
   and docs/decisions/0015-home-k3s-nginx-ingress.md
+- home-k3s runs persistent Authentik behind trusted nginx HTTPS
+  (`auth.aegis.home.arpa`), with its own standalone PostgreSQL (never
+  the ephemeral/bundled one dev-kind uses) and its own OAuth client —
+  and Grafana authenticates through it. A DB-only, non-Git test
+  identity (never declared in any blueprint) proved identity state
+  survives Pod loss, K3s restart, and a real host reboot, each time
+  confirmed with an actual interactive browser OIDC login, verified
+  server-side via Grafana's API. Local Grafana admin login stays
+  available as a recovery fallback. Identity state has a verified
+  encrypted off-host PostgreSQL backup with scratch-restore proof —
+  destructive Authentik restore and empty-host reconstruction are not
+  yet proven. See docs/decisions/0016-home-k3s-authentik-identity.md
 - persistent PostgreSQL state on home-k3s (stateful-lab/postgresql/, its
   own namespace, never Authentik's database): a known data invariant
   survives Pod recreation, a StatefulSet rollout restart, a K3s service
@@ -113,6 +124,7 @@ Implemented:
   docs/runbooks/stateful-lab-postgresql-backup-restore.md
 
 Planned:
+- destructive Authentik PostgreSQL restore + empty-host Authentik reconstruction proof
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
 - Authentik on home-k3s — deliberately deferred, needs its own
   persistent-PostgreSQL/backup/NetworkPolicy design, not a copy of dev-kind's

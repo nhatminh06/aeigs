@@ -19,6 +19,12 @@ A PostgreSQL Pod reaching `Ready` is not evidence of a successful
 restore. The only acceptable proof is the exact `persistence_proof`
 query, before and after, matching byte-for-byte.
 
+**This document covers stateful-lab's own PostgreSQL instance only.**
+Authentik has a completely separate PostgreSQL instance, backup script
+family, backup root, and status file — never mix the two artifact
+families together. See `docs/runbooks/home-k3s-authentik.md`'s "Backup"
+section and `docs/decisions/0016-home-k3s-authentik-identity.md`.
+
 ## Backup strategy: logical (`pg_dump`), not volume-level
 
 Chosen over a filesystem/volume-level backup because PostgreSQL

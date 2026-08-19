@@ -363,9 +363,12 @@ replacement, and not yet carrying most of what `dev-kind` runs:
                      v                               v
            Cilium Gateway API/TLS/            nginx ingress (TLS,
            Prometheus/Grafana/                HTTP->HTTPS redirect) +
-           Authentik                          Prometheus/Grafana —
-                                               NOT Cilium Gateway API,
-                                               see below. No Authentik.
+           Authentik                          Prometheus/Grafana +
+                                               own persistent Authentik
+                                               (own PostgreSQL, own
+                                               OAuth client) — NOT
+                                               Cilium Gateway API,
+                                               see below.
 ```
 
 Both environments read the same public repository anonymously — neither
@@ -392,17 +395,31 @@ firewall silently dropping pod-to-Service traffic) — is in
 health checks are in `docs/runbooks/home-k3s-recovery.md`.
 
 home-k3s now has permanent, trusted HTTPS ingress
-(`api.aegis.home.arpa`, `grafana.aegis.home.arpa`) and Prometheus/
-Grafana observability — but deliberately **not** through Cilium's
-Gateway API, which is broken on this host (a `reserved:ingress`
+(`api.aegis.home.arpa`, `grafana.aegis.home.arpa`, `auth.aegis.home.arpa`)
+and Prometheus/Grafana observability — but deliberately **not** through
+Cilium's Gateway API, which is broken on this host (a `reserved:ingress`
 datapath defect, `docs/decisions/0014-...md`) and replaced by a small,
 dedicated nginx reverse proxy instead
 (`docs/decisions/0015-home-k3s-nginx-ingress.md`). Both environments
 share the same development CA (ADR 0011), so a client that trusts
 dev-kind's certificates trusts home-k3s's too.
 
-**Explicitly not present on home-k3s yet**: Authentik, any image
-automation. See the environment-comparison table below.
+Grafana now authenticates through a persistent, home-k3s-specific
+Authentik instance (`docs/decisions/0016-home-k3s-authentik-identity.md`)
+— its own PostgreSQL (standalone, not the bundled/ephemeral subchart
+dev-kind uses), its own OAuth client credentials, and a portable
+`NetworkPolicy` instead of dev-kind's Cilium Gateway exception (since
+home-k3s's ingress is an ordinary workload, confirmed live via Cilium
+trace evidence — a genuine architectural difference, not forced
+symmetry with dev-kind). Local admin login stays available as a
+recovery fallback. A DB-only, non-Git test identity
+(`aegis-recovery-test`) proved identity state survives Pod loss, K3s
+restart, and a real host reboot through the actual OIDC login flow —
+proven with two separate interactive browser logins, before and after
+reboot, verified server-side via Grafana's API each time.
+
+**Explicitly not present on home-k3s yet**: any image automation.
+See the environment-comparison table below.
 
 ### Persistent application state (stateful-lab)
 
@@ -560,8 +577,8 @@ it's lost:
 |---|---|---|---|
 | Aegis Git repository | GitHub | Kubernetes desired state | Blocking — nothing rebuilds without it (unless a separate clone/mirror exists) |
 | SOPS age private key | Off-host (`~/.config/sops/age/`) | Decrypting Git-managed `Secret` objects | Blocking — encrypted Secrets stay undecryptable forever |
-| PostgreSQL backup artifact | Off-host (Mac, `~/.local/share/aegis/backups/`) | Database schema + rows | Blocking for data recovery — infrastructure still rebuilds, database stays empty |
-| PostgreSQL backup age key | Off-host (`~/.config/aegis/backup/age/`) | Decrypting the backup artifact | Blocking — the backup file alone is useless without it |
+| PostgreSQL backup artifacts | Off-host (Mac, `~/.local/share/aegis/backups/{stateful-lab,authentik}/`) | Database schema + rows (two separate families — stateful-lab and Authentik never share an artifact) | Blocking for data recovery — infrastructure still rebuilds, database stays empty |
+| PostgreSQL backup age key | Off-host (`~/.config/aegis/backup/age/`) | Decrypting both backup artifact families (same key, one trust purpose) | Blocking — the backup files alone are useless without it |
 | GHCR | External registry | `aegis-api` container image | Application reconstruction impacted; Kubernetes/database recovery unaffected |
 | Development CA key | Off-host (`~/.config/aegis/pki/`) | TLS on dev-kind AND home-k3s (one shared root, ADR 0015) | Blocking for both — `scripts/bootstrap-pki.sh` (dev-kind) / `scripts/bootstrap-pki-home-k3s.sh` (home-k3s) both restore from this same file |
 | Image-writer PAT | dev-kind only | Flux Image Automation writes | **Not required for home-k3s** — no writer credential exists there at all |
@@ -579,10 +596,11 @@ it):
 ## Not present yet
 
 Namespace-wide default deny, egress policy, and L7 policy (only the
-ingress boundaries above are enforced). Authentik and any node-level HA
-are not present on `home-k3s` — see its own section above. Cilium
-Gateway API is installed but not the active ingress mechanism there
-(ADR 0014/0015). The
+ingress boundaries above are enforced). Any node-level HA is not
+present on `home-k3s`. Cilium Gateway API is installed but not the
+active ingress mechanism there (ADR 0014/0015). Authentik's PostgreSQL
+destructive restore and empty-host reconstruction are not yet proven —
+only Pod loss, K3s restart, and a real host reboot are (ADR 0016). The
 development CA is trusted only by clients that explicitly import it —
 this is not a publicly trusted certificate and must not be described as
 one. Automatic rollback, progressive delivery/canary release, or any
