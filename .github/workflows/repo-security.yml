@@ -74,6 +74,20 @@ jobs:
       # them against a live API server.
       - name: Build dev-kind manifests
         run: ./kubectl kustomize clusters/dev-kind > /dev/null
+      - name: Build home-k3s manifests
+        run: ./kubectl kustomize clusters/home-k3s > /dev/null
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # shellcheck ships preinstalled on ubuntu-latest runners — no
+      # separate install/pin step needed. Several of these scripts are
+      # destructive-capable (backup/restore/prune) and load-bearing for
+      # the platform's recovery story, so static shell analysis is worth
+      # running on every push, not just ad hoc.
+      - name: shellcheck all scripts
+        run: shellcheck scripts/*.sh
 
   renovate-config:
     runs-on: ubuntu-latest
