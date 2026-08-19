@@ -132,6 +132,17 @@ Implemented:
   operator-run step. Backup and SOPS age keys currently have no second
   protected copy — flagged, not solved. See
   docs/runbooks/stateful-lab-postgresql-backup-restore.md
+- home-k3s has undergone a controlled K3s version change with persistent
+  application, identity, networking, security, TLS, observability, and
+  backup functionality validated before and after a real host reboot.
+  K3s was already on the latest published version at test time, so the
+  exercise moved to the previous real patch release and back
+  (`v1.36.3+k3s1` → `v1.36.2+k3s1` → `v1.36.3+k3s1`), proving genuine
+  version-change mechanics rather than a fabricated upgrade target.
+  Rollback to the previous pinned version was exercised using the same
+  official installer mechanism (no datastore restore was needed for this
+  same-Kubernetes-minor patch change). A cross-minor K8s version change
+  remains untested. See docs/runbooks/home-k3s-upgrade.md
 
 Planned:
 - empty-replacement-host Authentik reconstruction proof (mirroring
