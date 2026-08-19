@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Installs, removes, or reports on the two stateful-lab backup
-# LaunchAgents. Generates user-specific plists from the committed
-# templates in ops/launchd/ (substituting this machine's actual paths —
-# the templates themselves stay username-independent) into
-# ~/Library/LaunchAgents/, never into the repository.
+# Installs, removes, or reports on the four backup LaunchAgents —
+# stateful-lab and Authentik, each with a backup agent and a
+# restore-verify agent. Generates user-specific plists from the
+# committed templates in ops/launchd/ (substituting this machine's
+# actual paths — the templates themselves stay username-independent)
+# into ~/Library/LaunchAgents/, never into the repository.
 #
 # Uses the current launchctl domain-target workflow (bootstrap/bootout/
 # kickstart), not the legacy load/unload/start, which silently no-ops
@@ -13,9 +14,10 @@
 #   scripts/manage-backup-scheduler.sh install
 #   scripts/manage-backup-scheduler.sh uninstall
 #   scripts/manage-backup-scheduler.sh status
-#   scripts/manage-backup-scheduler.sh run-now backup|verify
+#   scripts/manage-backup-scheduler.sh run-now <stateful-lab|authentik> <backup|verify>
 #
-# See docs/runbooks/stateful-lab-postgresql-backup-restore.md.
+# See docs/runbooks/stateful-lab-postgresql-backup-restore.md and
+# docs/runbooks/home-k3s-authentik.md.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,10 +25,15 @@ TEMPLATE_DIR="${REPO_ROOT}/ops/launchd"
 AGENT_DIR="${HOME}/Library/LaunchAgents"
 DOMAIN="gui/$(id -u)"
 
-LABELS=(com.aegis.stateful-lab-backup com.aegis.stateful-lab-restore-verify)
+LABELS=(
+  com.aegis.stateful-lab-backup
+  com.aegis.stateful-lab-restore-verify
+  com.aegis.authentik-backup
+  com.aegis.authentik-restore-verify
+)
 
 usage() {
-  echo "usage: $0 install|uninstall|status|run-now <backup|verify>" >&2
+  echo "usage: $0 install|uninstall|status|run-now <stateful-lab|authentik> <backup|verify>" >&2
   exit 1
 }
 
@@ -75,14 +82,14 @@ cmd_status() {
 }
 
 cmd_run_now() {
-  local which="${1:-}"
-  case "${which}" in
-    backup) label="com.aegis.stateful-lab-backup" ;;
-    verify) label="com.aegis.stateful-lab-restore-verify" ;;
-    *)
-      echo "usage: $0 run-now backup|verify" >&2
-      exit 1
-      ;;
+  local target="${1:-}" which="${2:-}"
+  local label
+  case "${target}-${which}" in
+    stateful-lab-backup) label="com.aegis.stateful-lab-backup" ;;
+    stateful-lab-verify) label="com.aegis.stateful-lab-restore-verify" ;;
+    authentik-backup) label="com.aegis.authentik-backup" ;;
+    authentik-verify) label="com.aegis.authentik-restore-verify" ;;
+    *) usage ;;
   esac
   echo "==> forcing an immediate launchd-triggered run of ${label}"
   launchctl kickstart -k "${DOMAIN}/${label}"
@@ -92,6 +99,6 @@ case "${1:-}" in
   install) cmd_install ;;
   uninstall) cmd_uninstall ;;
   status) cmd_status ;;
-  run-now) cmd_run_now "${2:-}" ;;
+  run-now) cmd_run_now "${2:-}" "${3:-}" ;;
   *) usage ;;
 esac

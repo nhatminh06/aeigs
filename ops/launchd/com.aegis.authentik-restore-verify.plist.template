@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template — see com.aegis.stateful-lab-restore-verify.plist.template
+  for the StartCalendarInterval/environment reasoning. Runs the same
+  real scratch-restore + application-level identity fingerprint check
+  proven manually in prior milestones, now on a schedule. Offset 30
+  minutes from stateful-lab's restore-verify agent for the same reason
+  as the backup agent above — avoids simultaneous starts, not required
+  for correctness (independent lock files, independent scratch
+  databases).
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.aegis.authentik-restore-verify</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__REPO_ROOT__/scripts/verify-authentik-backup-restore.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>4</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>__HOME__</string>
+        <key>KUBECONFIG</key>
+        <string>__HOME__/.kube/home-k3s.yaml</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/.local/state/aegis/logs/authentik-restore-verify.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/.local/state/aegis/logs/authentik-restore-verify.launchd.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

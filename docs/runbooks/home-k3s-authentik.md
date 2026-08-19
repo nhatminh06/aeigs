@@ -88,9 +88,26 @@ that would defeat the entire point of the check.
 same proven shape as the stateful-lab scripts, own backup root
 (`~/.local/share/aegis/backups/authentik/postgresql/`), own status file
 (`~/.local/state/aegis/backups/authentik/status.txt`), same dedicated
-backup age key. **Not** wired into the launchd scheduler in this
-milestone — run manually until a scheduling decision is made
-deliberately, not as an afterthought.
+backup age key.
+
+**Now scheduled** (as of the 2026-08-19 final hardening milestone):
+`com.aegis.authentik-backup` (every 6h, offset 15 minutes from
+stateful-lab's own backup schedule) and `com.aegis.authentik-restore-verify`
+(daily), installed the same way as stateful-lab's agents via
+`scripts/manage-backup-scheduler.sh install` — see that script's own
+`LABELS` array and `docs/runbooks/stateful-lab-postgresql-backup-restore.md`'s
+scheduling section for the shared mechanics. Force either with
+`scripts/manage-backup-scheduler.sh run-now authentik backup` /
+`run-now authentik verify`. `scripts/backup-status.sh` now reports both
+database families' status separately and exits non-zero if either is
+stale — a healthy stateful-lab result no longer masks a broken Authentik
+one, or vice versa.
+
+The backup used as evidence for the 2026-08-19 destructive-recovery
+milestone (`20260819T075657Z`) carries a `PROTECTED` marker file in its
+directory, the same mechanism stateful-lab's own disaster-recovery
+baseline uses — retention will never remove it regardless of age or
+count.
 
 The fingerprint recorded in each backup's metadata
 (`pre_backup_identity_fingerprint_sha256`) is application-level: the

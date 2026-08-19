@@ -198,16 +198,26 @@ Kubernetes CronJob — this keeps "where the database lives" and "where
 the backup lives" genuinely separate failure domains, which is the
 entire point of an off-host backup.
 
-Two per-user LaunchAgents (`ops/launchd/*.plist.template`, generated
-into `~/Library/LaunchAgents/` by
+Four per-user LaunchAgents total — one backup/restore-verify pair per
+database family (stateful-lab, Authentik) — generated from
+`ops/launchd/*.plist.template` into `~/Library/LaunchAgents/` by
 `scripts/manage-backup-scheduler.sh install` with this machine's actual
-paths substituted — the templates themselves carry no username or
+paths substituted (the templates themselves carry no username or
 secrets):
 
 - `com.aegis.stateful-lab-backup` — `StartCalendarInterval` at
   00:15/06:15/12:15/18:15.
 - `com.aegis.stateful-lab-restore-verify` — `StartCalendarInterval` at
   03:30.
+- `com.aegis.authentik-backup` — `StartCalendarInterval` at
+  00:30/06:30/12:30/18:30 (offset 15 minutes from stateful-lab's, so the
+  two families' scheduled runs don't start in the same instant — not
+  required for correctness, since each family has its own lock file, log
+  file, and status file, just avoids two unrelated `kubectl` sessions
+  starting simultaneously for no reason). See
+  `docs/runbooks/home-k3s-authentik.md`'s "Backup" section.
+- `com.aegis.authentik-restore-verify` — `StartCalendarInterval` at
+  04:00.
 
 `StartCalendarInterval`, not `StartInterval`: per Apple's own launchd
 documentation, a `StartCalendarInterval` job missed while the Mac is
@@ -221,14 +231,15 @@ be assumed to match an interactive shell).
 Operator commands, via `scripts/manage-backup-scheduler.sh`:
 
 ```
-install            # generate + launchctl bootstrap both agents
-uninstall          # launchctl bootout both, remove plists — backups
-                     themselves are never touched by this
-status             # launchctl print state for both
-run-now backup     # launchctl kickstart -k, forces an immediate real
-run-now verify       launchd-triggered run (not just running the shell
-                     script directly — proves the launchd environment
-                     itself works)
+install                       # generate + launchctl bootstrap all four agents
+uninstall                     # launchctl bootout all four, remove plists —
+                                 backups themselves are never touched by this
+status                        # launchctl print state for all four
+run-now stateful-lab backup   # launchctl kickstart -k, forces an immediate
+run-now stateful-lab verify     real launchd-triggered run for the named
+run-now authentik backup        target (not just running the shell script
+run-now authentik verify        directly — proves the launchd environment
+                                 itself works)
 ```
 
 Both agents were force-run this way and completed successfully with no
@@ -480,18 +491,22 @@ honestly rather than claimed solved.
 
 ```
 scripts/run-stateful-lab-backup.sh              # backup now (manual, ad-hoc)
-scripts/backup-status.sh                        # backup status (HEALTHY/STALE)
+scripts/backup-status.sh                        # status for BOTH targets (HEALTHY/STALE)
 scripts/verify-stateful-lab-backup-restore.sh    # verify latest restore now
 scripts/prune-stateful-lab-backups.sh --dry-run  # retention dry-run
 ls ~/.local/share/aegis/backups/stateful-lab/postgresql/  # list backups
 
-scripts/manage-backup-scheduler.sh install       # enable scheduler
-scripts/manage-backup-scheduler.sh uninstall     # disable scheduler
-                                                    (backups are NOT deleted)
-scripts/manage-backup-scheduler.sh status        # scheduler status
-scripts/manage-backup-scheduler.sh run-now backup  # force a real
-scripts/manage-backup-scheduler.sh run-now verify    launchd-triggered run
+scripts/manage-backup-scheduler.sh install                  # enable all 4 agents
+scripts/manage-backup-scheduler.sh uninstall                # disable all 4
+                                                                (backups are NOT deleted)
+scripts/manage-backup-scheduler.sh status                   # scheduler status, all 4
+scripts/manage-backup-scheduler.sh run-now stateful-lab backup  # force a real
+scripts/manage-backup-scheduler.sh run-now stateful-lab verify    launchd-triggered
+scripts/manage-backup-scheduler.sh run-now authentik backup       run for the
+scripts/manage-backup-scheduler.sh run-now authentik verify       named target
 
 tail -f ~/.local/state/aegis/logs/stateful-lab-backup.log
 tail -f ~/.local/state/aegis/logs/stateful-lab-restore-verify.log
+tail -f ~/.local/state/aegis/logs/authentik-backup.log
+tail -f ~/.local/state/aegis/logs/authentik-restore-verify.log
 ```
