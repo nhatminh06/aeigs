@@ -6,5 +6,6 @@ resources:
   - kyverno-policies.yaml
   - cert-manager.yaml
   - ingress.yaml
+  - observability.yaml
   - aegis-api.yaml
   - stateful-lab.yaml

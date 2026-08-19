@@ -1,0 +1,20 @@
+# Same shape as apps/aegis-api/servicemonitor.yaml (dev-kind) — the
+# release label and discovery mechanism are genuinely shared, only the
+# cluster differs. Scrapes the Service directly, never through the
+# ingress — see apps/aegis-api/home-k3s/networkpolicy.yaml for the
+# corresponding NetworkPolicy update.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: aegis-api
+  namespace: aegis-api
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: aegis-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s

@@ -1,0 +1,89 @@
+# Deliberately NOT a copy of observability/kube-prometheus-stack/helmrelease.yaml
+# (dev-kind) — local Grafana auth instead of Authentik OIDC (no
+# Authentik on home-k3s yet), home-k3s's own hostname, PVC-backed
+# Prometheus (this is a persistent host and reboot-survival of
+# telemetry is explicitly part of this milestone, unlike dev-kind's
+# disposable-cluster reasoning), and a retention chosen for this host
+# rather than copied. Same chart pin as dev-kind — already proven
+# compatible with this Kubernetes version.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: observability
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      version: "88.3.0"
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: observability
+  values:
+    # No notification infrastructure in this milestone — Prometheus's own
+    # rule evaluation (alerts inactive/active in its API) is enough to
+    # prove the SLO rules work.
+    alertmanager:
+      enabled: false
+    grafana:
+      admin:
+        existingSecret: grafana-admin
+        userKey: admin-user
+        passwordKey: admin-password
+      # No PVC: dashboards/config are Git-provisioned, and there is no
+      # other mutable Grafana state worth surviving a Pod restart.
+      persistence:
+        enabled: false
+      "grafana.ini":
+        server:
+          root_url: https://grafana.aegis.home.arpa/
+        auth:
+          # Local admin/password only — no Authentik on home-k3s yet.
+          # See docs/decisions/0015-home-k3s-nginx-ingress.md.
+          disable_login_form: false
+    prometheus:
+      prometheusSpec:
+        # Persistent host, so a small PVC is justified (see the ADR) —
+        # unlike dev-kind's disposable-cluster reasoning. 24h: enough to
+        # see a reboot's data gap and a day of real history without
+        # meaningfully touching CachyOS's disk (95G free at the time
+        # this was chosen).
+        retention: 24h
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: local-path
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 2Gi
+        resources:
+          requests:
+            cpu: 50m
+            memory: 256Mi
+          limits:
+            memory: 512Mi
+    prometheusOperator:
+      resources:
+        requests:
+          cpu: 20m
+          memory: 128Mi
+    kubeStateMetrics:
+      enabled: true
+    nodeExporter:
+      enabled: true
+    # Not chased in this milestone — a single-node K3s control plane's
+    # own scrape targets (etcd, scheduler, etc.) aren't exposed the same
+    # way a kubeadm cluster's are, and getting every one green isn't the
+    # point here.
+    kubeControllerManager:
+      enabled: false
+    kubeScheduler:
+      enabled: false
+    kubeEtcd:
+      enabled: false
+    kubeProxy:
+      enabled: false
