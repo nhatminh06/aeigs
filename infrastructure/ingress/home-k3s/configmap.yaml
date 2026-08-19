@@ -67,6 +67,15 @@ data:
         location / {
           proxy_pass http://kube-prometheus-stack-grafana.observability.svc.cluster.local:80/;
           proxy_set_header Host $host;
+          # Cilium's Gateway (dev-kind's Envoy) sets these automatically;
+          # nginx doesn't, and their absence is why Authentik's frontend
+          # failed with "the request failed and the interceptors did not
+          # return an alternative response" in a live browser test —
+          # without X-Forwarded-Proto it built mixed-content (http://)
+          # API calls that the browser silently blocked.
+          proxy_set_header X-Forwarded-Proto https;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-Port 30443;
         }
       }
 
@@ -81,6 +90,15 @@ data:
         location / {
           proxy_pass http://authentik-server.authentik.svc.cluster.local:80/;
           proxy_set_header Host $host;
+          # Cilium's Gateway (dev-kind's Envoy) sets these automatically;
+          # nginx doesn't, and their absence is why Authentik's frontend
+          # failed with "the request failed and the interceptors did not
+          # return an alternative response" in a live browser test —
+          # without X-Forwarded-Proto it built mixed-content (http://)
+          # API calls that the browser silently blocked.
+          proxy_set_header X-Forwarded-Proto https;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-Port 30443;
         }
       }
     }
