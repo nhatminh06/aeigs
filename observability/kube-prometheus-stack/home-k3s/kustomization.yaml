@@ -5,3 +5,4 @@ resources:
   - helmrepository.yaml
   - helmrelease.yaml
   - grafana-admin.enc.yaml
+  - dashboard-aegis-api.yaml

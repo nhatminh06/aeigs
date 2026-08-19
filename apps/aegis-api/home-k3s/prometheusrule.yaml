@@ -1,0 +1,71 @@
+# home-k3s development service objectives — measured fresh against
+# this cluster's own HTTPS ingress path (586 requests, 5Hz, 2 minutes,
+# alternating /api/v1/info and /api/v1/work), not copied from
+# dev-kind's v0.1.3-derived thresholds. Measured baseline: success
+# ratio 100%, 0% 5xx, p50=2.5ms, p95=4.75ms, p99=4.95ms,
+# ~2.36 req/s. Success/5xx thresholds match dev-kind's generic
+# development defaults (99%/1% — not measurement-specific); the p95
+# latency threshold is home-k3s-specific: ~10x the measured baseline
+# headroom, deliberately not dev-kind's 100ms by coincidence — this
+# host's measured latency is an order of magnitude lower (no Authentik
+# OIDC hop, no cluster-internal Envoy proxy, single-node loopback-class
+# network path).
+#
+# Same path exclusion as dev-kind and for the same reason:
+# /healthz, /readyz, /metrics are instrumented by the same middleware
+# and would dilute the user-facing request population with probe
+# traffic.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: aegis-api
+  namespace: aegis-api
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: aegis-api.rules
+      interval: 30s
+      rules:
+        - record: aegis_api:request_success_ratio:5m
+          expr: |
+            sum(rate(aegis_api_http_requests_total{path=~"/api/v1/.*",status!~"5.."}[5m]))
+            /
+            sum(rate(aegis_api_http_requests_total{path=~"/api/v1/.*"}[5m]))
+        - record: aegis_api:http_5xx_ratio:5m
+          expr: |
+            sum(rate(aegis_api_http_requests_total{path=~"/api/v1/.*",status=~"5.."}[5m]))
+            /
+            sum(rate(aegis_api_http_requests_total{path=~"/api/v1/.*"}[5m]))
+        - record: aegis_api:http_request_duration_p95_seconds:5m
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(aegis_api_http_request_duration_seconds_bucket{path=~"/api/v1/.*"}[5m])) by (le)
+            )
+    - name: aegis-api.alerts
+      interval: 30s
+      rules:
+        - alert: AegisApiLowSuccessRatio
+          expr: aegis_api:request_success_ratio:5m < 0.99
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "aegis-api success ratio below 99% (home-k3s development lab objective)"
+            description: "aegis_api:request_success_ratio:5m has been below 0.99 for 2m. Current value: {{ $value | printf \"%.4f\" }}."
+        - alert: AegisApiHighErrorRate
+          expr: aegis_api:http_5xx_ratio:5m > 0.01
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "aegis-api 5xx ratio above 1% (home-k3s development lab objective)"
+            description: "aegis_api:http_5xx_ratio:5m has been above 0.01 for 2m. Current value: {{ $value | printf \"%.4f\" }}."
+        - alert: AegisApiHighLatency
+          expr: aegis_api:http_request_duration_p95_seconds:5m > 0.05
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "aegis-api p95 latency above 50ms (home-k3s development lab objective)"
+            description: "aegis_api:http_request_duration_p95_seconds:5m has been above 0.05s for 2m. Current value: {{ $value | printf \"%.4f\" }}s."
