@@ -4,8 +4,8 @@
 # ordinary workload identity (3285, not a reserved Cilium entity) — so
 # a portable NetworkPolicy is sufficient here; no CiliumNetworkPolicy
 # exception is needed the way dev-kind's Gateway required one.
-# Prometheus is added as a second allowed source once observability
-# exists (docs/decisions/0015-home-k3s-nginx-ingress.md).
+# Prometheus (app.kubernetes.io/name: prometheus, observed live from
+# its actual pod labels once deployed) is the second allowed source.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -25,6 +25,12 @@ spec:
           podSelector:
             matchLabels:
               app: ingress-nginx
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
       ports:
         - protocol: TCP
           port: 8080
