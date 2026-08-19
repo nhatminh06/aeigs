@@ -64,22 +64,23 @@ Implemented:
   both a K3s service restart and a real host reboot, plus GitOps drift
   correction. See docs/decisions/0013-home-k3s-persistent-environment.md
   and docs/runbooks/home-k3s-recovery.md
-- Cilium Gateway API is installed and correctly configured on home-k3s
-  (CRDs, GatewayClass, a Gateway reaching Accepted+Programmed, an
-  Accepted HTTPRoute for aegis-api) but is **not usable**: every request
-  through it times out due to a defect scoped to Cilium's Gateway
-  `reserved:ingress` datapath (the identity's connection to the backend
-  never completes its TCP handshake), reproduced identically on Cilium
-  1.20.0 and 1.17.18. A follow-up control experiment
-  (`ingress-lab/`) proved home-k3s's networking is otherwise fine: an
-  ordinary reverse-proxy workload reaches aegis-api through both a
-  pod-to-pod path and a plain K3s NodePort, cleanly and deterministically
-  (20/20 requests). aegis-api on home-k3s remains reachable only via
-  `kubectl port-forward` — the working proxy/NodePort path was
-  deliberately not adopted as permanent infrastructure; that is a
-  separate architecture decision, not made here. No TLS/observability
-  was attempted on top of a routing path that doesn't work. See
-  docs/decisions/0014-home-k3s-gateway-blocked-by-cilium-ingress-identity-bug.md
+- home-k3s provides persistent HTTPS ingress through a dedicated nginx
+  reverse proxy (`api.aegis.home.arpa`, `grafana.aegis.home.arpa`,
+  trusted HTTPS via the shared Aegis Development Root CA, HTTP->HTTPS
+  redirect, `/metrics` never externally routed), plus Prometheus/
+  Grafana observability with development SLOs measured fresh against
+  this cluster's own traffic. Deliberately **not** Cilium's Gateway
+  API: it is installed (CRDs, GatewayClass) but its
+  `reserved:ingress` backend datapath is broken on this host (a defect
+  reproduced identically on Cilium 1.20.0 and 1.17.18) — a control
+  experiment (`ingress-lab/`, kept as a regression lab) proved this is
+  scoped to that one datapath, not general networking, which is why a
+  small proxy replaces it instead of a deeper workaround. Proven live
+  end to end, including a real host reboot with every layer (ingress,
+  TLS, Prometheus/Grafana, PostgreSQL, backup scheduler) recovering
+  automatically. Local Grafana login only — no Authentik on home-k3s
+  yet. See docs/decisions/0014-home-k3s-gateway-blocked-by-cilium-ingress-identity-bug.md
+  and docs/decisions/0015-home-k3s-nginx-ingress.md
 - persistent PostgreSQL state on home-k3s (stateful-lab/postgresql/, its
   own namespace, never Authentik's database): a known data invariant
   survives Pod recreation, a StatefulSet rollout restart, a K3s service
@@ -113,10 +114,10 @@ Implemented:
 
 Planned:
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
-- home-k3s TLS/observability/Authentik — blocked until the Cilium Gateway
-  defect above is resolved (upstream fix, or a different exposure model)
-- a second protected copy of the backup and SOPS age keys (currently
-  single-machine-only)
+- Authentik on home-k3s — deliberately deferred, needs its own
+  persistent-PostgreSQL/backup/NetworkPolicy design, not a copy of dev-kind's
+- a second protected copy of the backup, SOPS, and development CA keys
+  (currently single-machine-only)
 ```
 
 ## Owned workloads

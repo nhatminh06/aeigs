@@ -133,10 +133,12 @@ RTO — every step above was run by a human operator.
    flux-system` forces it.
 7. **Kyverno**: `kubectl -n kyverno get pods` — all `Running`.
 8. **Application**: `kubectl -n aegis-api get pods` — `1/1 Running`.
-   `kubectl -n aegis-api port-forward svc/aegis-api 18080:80` (Phase-1
-   validation path only, not the long-term access method — see the ADR)
-   then `curl localhost:18080/api/v1/info` and confirm the version/commit
-   match the digest pinned in `apps/aegis-api/home-k3s/deployment.yaml`.
+   `kubectl -n aegis-api port-forward svc/aegis-api 18080:80` then `curl
+   localhost:18080/api/v1/info` and confirm the version/commit match
+   the digest pinned in `apps/aegis-api/home-k3s/deployment.yaml`. For
+   the real access path (ingress, TLS, Grafana), see
+   `docs/runbooks/home-k3s-ingress-recovery.md` and
+   `docs/runbooks/home-k3s-observability.md`.
 9. **Stateful lab (PostgreSQL)**:
    ```
    kubectl -n stateful-lab get pvc data-postgresql-0    # Bound
