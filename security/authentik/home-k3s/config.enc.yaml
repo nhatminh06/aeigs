@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: authentik-config
+    namespace: authentik
+stringData:
+    secret-key: ENC[AES256_GCM,data:GfAjII7pe7gt+9/6mBOrEAM7uLfAJ4beVd6P88ONRPpTv35nfPj9Zbi+grf1VsjQL765u2tbCybg89z/37mNpVTWkyw=,iv:wWgsA8m6rD5XiRVJikZOuvYyFyudmIvKO9yu+lYl5ac=,tag:6K46VVIAKvGD1HdwNrpQJw==,type:str]
+    bootstrap-password: ENC[AES256_GCM,data:wz544eJiuE6Uxin041IVGu/KEy+ib5uw,iv:lCP5Q6MfzqpgpQq93YzqOtCVv3YrGNktBLy2cLKK+3k=,tag:+Xo+w4upJf91oQ3H1sZZOw==,type:str]
+    bootstrap-token: ENC[AES256_GCM,data:CfEvJQZlO77/lP7TtXPoBU8xMV7RUw26mSX4Ay60NQ+ALzQE9q3c09IjZBYDoUE6NL1LM5lKcagIUmky,iv:l4Rd+0EvI9C7tHo8ZFTtzPLKVawO+Z0zGMjsIuPbWZE=,tag:8i1zC0s3jJrvGF0i61o2qA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBCdktjNkJsM21ZUWdPWk1k
+            Z0FRSG1VamVpcE0wbHpDR1orTmVoaTNNK25BCkZ0d2xFRHZZa3NWVmtDaG85bkc2
+            U1Y2cGxFUFhucDdYLzFuTjQyUm5hcW8KLS0tIEJacS9lcWdxNFVnTXJpY3IxQnRJ
+            NHNSeGdXRGs4dmxsSkVjN2ZoNENkM3cKlmzH0vaIpxN3DDdoIJ7BHanxrdGu4KN6
+            +BcXNTo5C/gi+z8Ti3iSe86X3PZ3hLtXkJNvAK4xGV2UHtCvNi4XIA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1gfycq3cyvq29hwkluywkhyc6rpt9y257u9ltltea769khtkysawslec0vw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-19T05:54:37Z"
+    mac: ENC[AES256_GCM,data:O3Y7Qi3hQJq1Dj9Ec5lh6gWUTSvzyqfWLbcBjVJLfGB5F1XdZEs3DNb4m4JoS+Xstw2EEoqVNYSF5xZCGKig3zRfBaCKfgTttdAJ11Ycoj7OQmnpe0EuicSjVvwyrU2vAAhMx/Vb5VAgjPDJVehSBS8RJ5MiwvbJUNqdi/C/nkA=,iv:6mdrcI5tXDZSciZ1ZpGqkG+od/e/wbeuFRXLZg3jrok=,tag:Mm9qcfFkDF9VU10g78dyiQ==,type:str]
+    version: 3.13.3

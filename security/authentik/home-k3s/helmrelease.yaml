@@ -1,0 +1,85 @@
+# Deliberately NOT a copy of security/authentik/helmrelease.yaml
+# (dev-kind) — postgresql.enabled: false here, connecting instead to
+# the standalone StatefulSet in postgresql-statefulset.yaml. Confirmed
+# via `helm template` on the pinned chart that no template wires
+# AUTHENTIK_POSTGRESQL__* to the bundled subchart specifically — this is
+# the same code path, just supplying connection details explicitly. See
+# docs/decisions/0016-home-k3s-authentik-identity.md.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  interval: 1h
+  chart:
+    spec:
+      # Same pin as dev-kind — this is a migration, not an upgrade
+      # window. Not evaluating the renovate/authentik-2026.x branch here.
+      chart: authentik
+      version: "2026.5.6"
+      sourceRef:
+        kind: HelmRepository
+        name: authentik
+        namespace: authentik
+  values:
+    postgresql:
+      # The chart's bundled Bitnami subchart — off. home-k3s uses the
+      # standalone StatefulSet instead (docs/decisions/0016-...md).
+      enabled: false
+    global:
+      env:
+        - name: AUTHENTIK_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: authentik-config
+              key: secret-key
+        - name: AUTHENTIK_POSTGRESQL__HOST
+          value: authentik-postgresql.authentik.svc.cluster.local
+        - name: AUTHENTIK_POSTGRESQL__PORT
+          value: "5432"
+        - name: AUTHENTIK_POSTGRESQL__NAME
+          value: authentik
+        - name: AUTHENTIK_POSTGRESQL__USER
+          value: authentik
+        - name: AUTHENTIK_POSTGRESQL__PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: authentik-postgresql
+              key: postgres-password
+        - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: authentik-config
+              key: bootstrap-password
+        - name: AUTHENTIK_BOOTSTRAP_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: authentik-config
+              key: bootstrap-token
+        - name: AUTHENTIK_BOOTSTRAP_EMAIL
+          value: akadmin@home-k3s.aegis.local
+    # Resources reused as-is from dev-kind's measured history — real
+    # OOMKilled incidents (server at 512Mi limit, worker at 256Mi limit),
+    # not a guess re-derived here. See security/authentik/helmrelease.yaml
+    # for the full measurement notes.
+    server:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: 500m
+          memory: 768Mi
+    worker:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    # blueprints.secrets (Grafana OIDC provider/application) is added
+    # once Authentik itself is proven healthy — see
+    # security/authentik/home-k3s/blueprint.enc.yaml, added later in
+    # this same milestone once the base install is verified internally.

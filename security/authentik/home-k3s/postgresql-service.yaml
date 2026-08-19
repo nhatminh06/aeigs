@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: authentik-postgresql
+  namespace: authentik
+  labels:
+    app: authentik-postgresql
+spec:
+  type: ClusterIP
+  selector:
+    app: authentik-postgresql
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

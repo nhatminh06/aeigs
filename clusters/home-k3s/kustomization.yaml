@@ -7,5 +7,6 @@ resources:
   - cert-manager.yaml
   - ingress.yaml
   - observability.yaml
+  - authentik.yaml
   - aegis-api.yaml
   - stateful-lab.yaml

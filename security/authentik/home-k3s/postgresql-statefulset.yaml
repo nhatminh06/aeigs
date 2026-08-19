@@ -1,0 +1,110 @@
+# Authentik's own PostgreSQL instance — deliberately standalone, not the
+# chart's bundled Bitnami subchart (dev-kind uses that, with
+# persistence.enabled: false — not meant to survive a rebuild). home-k3s
+# is a persistence/recovery environment, so this mirrors
+# stateful-lab/postgresql/statefulset.yaml's proven pattern instead: same
+# image digest, same security-context reasoning, own PVC/credentials —
+# a completely separate instance from stateful-lab's, per
+# docs/decisions/0016-home-k3s-authentik-identity.md.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: authentik-postgresql
+  namespace: authentik
+spec:
+  serviceName: authentik-postgresql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: authentik-postgresql
+  template:
+    metadata:
+      labels:
+        app: authentik-postgresql
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        # fsGroup makes kubelet chown the mounted PVC to this GID before
+        # the container starts, letting the official Postgres entrypoint
+        # skip its root-chown-then-step-down path and start directly as
+        # non-root — verified live in stateful-lab, reused here.
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgresql
+          # Same digest as stateful-lab/postgresql/statefulset.yaml —
+          # confirmed live from the registry when that was pinned; reused
+          # here rather than re-resolved, since it's the same intended
+          # PostgreSQL 17 minor/patch level for both instances.
+          image: postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: authentik
+            - name: POSTGRES_USER
+              value: authentik
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-postgresql
+                  key: postgres-password
+            # Same reasoning as stateful-lab: local-path's own
+            # lost+found-style metadata at the mount's top level trips
+            # the postgres entrypoint's "is this dir empty" check.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: tmp
+              mountPath: /tmp
+            - name: run-postgresql
+              mountPath: /var/run/postgresql
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+              ephemeral-storage: 64Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+              ephemeral-storage: 256Mi
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "authentik", "-d", "authentik"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "authentik", "-d", "authentik"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: run-postgresql
+          emptyDir:
+            sizeLimit: 16Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            # Larger than stateful-lab's 1Gi — Authentik's schema (flows,
+            # policies, events, sessions) is meaningfully bigger than a
+            # one-table demo, though still small for a personal lab.
+            storage: 2Gi
