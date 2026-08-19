@@ -1,0 +1,21 @@
+# Separate certificate from api-tls/grafana-tls — same one-cert-per-hostname
+# principle as dev-kind (infrastructure/gateway/certificate-auth.yaml).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: auth-tls
+  namespace: ingress-system
+spec:
+  secretName: auth-tls
+  duration: 720h
+  renewBefore: 240h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  dnsNames:
+    - auth.aegis.home.arpa
+  issuerRef:
+    name: aegis-dev-ca
+    kind: Issuer
+    group: cert-manager.io

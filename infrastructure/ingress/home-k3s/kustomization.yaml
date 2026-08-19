@@ -5,6 +5,7 @@ resources:
   - issuer.yaml
   - certificate-api.yaml
   - certificate-grafana.yaml
+  - certificate-auth.yaml
   - configmap.yaml
   - deployment.yaml
   - service.yaml

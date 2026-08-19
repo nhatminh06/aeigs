@@ -33,7 +33,7 @@ data:
 
       server {
         listen 8080;
-        server_name api.aegis.home.arpa grafana.aegis.home.arpa;
+        server_name api.aegis.home.arpa grafana.aegis.home.arpa auth.aegis.home.arpa;
         return 301 https://$host$request_uri;
       }
 
@@ -66,6 +66,20 @@ data:
 
         location / {
           proxy_pass http://kube-prometheus-stack-grafana.observability.svc.cluster.local:80/;
+          proxy_set_header Host $host;
+        }
+      }
+
+      server {
+        listen 8443 ssl;
+        server_name auth.aegis.home.arpa;
+        ssl_certificate     /etc/nginx/tls/auth/tls.crt;
+        ssl_certificate_key /etc/nginx/tls/auth/tls.key;
+
+        # Service port 80 -> container port 9000, same mapping dev-kind's
+        # HTTPRoute uses.
+        location / {
+          proxy_pass http://authentik-server.authentik.svc.cluster.local:80/;
           proxy_set_header Host $host;
         }
       }

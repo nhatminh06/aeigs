@@ -42,6 +42,9 @@ spec:
             - name: grafana-tls
               mountPath: /etc/nginx/tls/grafana
               readOnly: true
+            - name: auth-tls
+              mountPath: /etc/nginx/tls/auth
+              readOnly: true
             - name: tmp
               mountPath: /tmp
           securityContext:
@@ -81,5 +84,8 @@ spec:
         - name: grafana-tls
           secret:
             secretName: grafana-tls
+        - name: auth-tls
+          secret:
+            secretName: auth-tls
         - name: tmp
           emptyDir: {}
