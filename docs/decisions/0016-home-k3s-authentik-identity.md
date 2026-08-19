@@ -106,11 +106,12 @@ deliberately not.
   fallback.
 - Authentik identity state (users, the OAuth application/provider) is
   now covered by the same off-host encrypted backup model as
-  stateful-lab, with its own verified backup and scratch-restore proof
-  — but destructive Authentik PostgreSQL restore and empty-host
-  Authentik reconstruction are **not** proven yet; that's the next
-  milestone, matching stateful-lab's own two-phase precedent (ADR from
-  the destructive-restore milestone).
+  stateful-lab, with its own verified backup and scratch-restore proof.
+  Destructive Authentik PostgreSQL restore (PVC/PV loss, not just Pod
+  loss) was proven live on 2026-08-19 — see
+  `docs/runbooks/home-k3s-authentik.md`'s "Destructive identity
+  recovery". Empty-replacement-host Authentik reconstruction (mirroring
+  stateful-lab's own "Second proof") has **not** been attempted.
 - Blueprint discovery's unreliable automatic trigger is a real,
   disclosed operational gap — an operator restoring `authentik-blueprints`
   onto a fresh install may need to run `ak apply_blueprint` manually
