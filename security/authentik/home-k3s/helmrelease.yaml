@@ -12,6 +12,10 @@ metadata:
   namespace: authentik
 spec:
   interval: 1h
+  # Default 5m0s wasn't enough for the first install's Django migrations
+  # against a fresh database — observed live taking ~6m. 10m gives real
+  # headroom over that measurement, not a guess.
+  timeout: 10m0s
   chart:
     spec:
       # Same pin as dev-kind — this is a migration, not an upgrade
