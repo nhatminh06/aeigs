@@ -4,9 +4,9 @@ Current state of Aegis's two environments. Most of this document
 describes `dev-kind`, the disposable engineering environment where every
 control here was built and tested; `home-k3s`, the newer persistent
 environment, is covered in its own section below rather than duplicated
-throughout. `architecture.png` predates Authentik, the credential/
-bootstrap changes, and home-k3s entirely; this file is the accurate
-version and the one to update as the platform changes.
+throughout. `architecture.png` (embedded in the top-level README) is now
+the current, maintained 1:1 diagram; this file is the detailed text/ASCII
+companion — keep both updated together as the platform changes.
 
 ## Runtime
 

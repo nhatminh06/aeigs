@@ -1,11 +1,15 @@
 # Final architecture diagram — specification
 
-This is a **textual specification** for a future 1:1 replacement of
-`docs/architecture/architecture.png`, which is known stale (predates
-Cilium/Hubble, Authentik, aegis-api, home-k3s entirely — see the note in
-the README). `architecture.png` itself is not touched by this
-specification; `docs/architecture/README.md` remains the accurate,
-current text/ASCII description until an actual image is produced.
+`docs/architecture/architecture.png` now exists as a current, 1:1
+diagram (embedded in the top-level README) and covers this same ground,
+organized somewhat differently — three numbered layers (application
+supply chain, GitOps control plane, policy/secrets/trust), a dev-kind/
+home-k3s side-by-side split, and a bottom evidence/recovery/feature-freeze
+strip, rather than the top/left/right/center/bottom layout sketched
+below. This document is kept as the original design rationale — the
+*why* behind what belongs together and what must stay visually separate
+— for whoever revises the diagram next; it is not a gap to fill.
+`architecture.png` itself is not touched by this specification.
 
 ## Layout
 

@@ -23,6 +23,12 @@ below.
 
 ## Architecture
 
+![Aegis architecture: application supply chain, GitOps control plane, policy/secrets/trust, the intentional dev-kind/home-k3s divergence, threat/control/evidence, recovery responsibility model, and feature-freeze/accepted limitations](docs/architecture/architecture.png)
+
+The diagram above is the current, maintained 1:1 architecture reference.
+The ASCII summary below and the [two-environment table](#two-environments)
+cover the same ground in text form, for anywhere images don't render.
+
 ```
                          GitHub (github.com/nhatminh06/aeigs)
                        /                              \
