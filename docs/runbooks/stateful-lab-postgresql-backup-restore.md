@@ -429,10 +429,12 @@ scheduled. Specifically still true after this milestone:
   its scratch database — it is not an independent verification engine.
 - Empty-replacement-host reconstruction is proven on a disposable Lima
   VM, not by actually wiping and reinstalling `cachyos` itself.
-- No Gateway/TLS/monitoring/Authentik on home-k3s; manual release
-  promotion remains; no Prometheus/Alertmanager monitoring of backup
-  status — `scripts/backup-status.sh` is a manual/on-demand check, not
-  an alerting system.
+- home-k3s does have TLS ingress (nginx + the shared development CA),
+  Prometheus/Grafana monitoring, and its own persistent Authentik —
+  what's still true: manual release promotion remains, and there is no
+  Prometheus/Alertmanager monitoring of *backup* status specifically —
+  `scripts/backup-status.sh` is a manual/on-demand check, not an
+  alerting system.
 
 ### Key redundancy
 
@@ -456,10 +458,15 @@ currently also lives only on this Mac. Deliberately not merged with the
 backup key — they represent different trust purposes and should keep
 independent second copies, not share one.
 
-**Development CA key** (`~/.config/aegis/pki/`): lower priority —
-confirmed **not required** for the current home-k3s recovery path (no
-Gateway/TLS there yet), so its own redundancy is out of scope here and
-does not block this milestone.
+**Development CA key** (`~/.config/aegis/pki/`): home-k3s's nginx
+ingress now serves TLS from this same shared development CA
+(`docs/decisions/0015-home-k3s-nginx-ingress.md`), so it *is* relevant to
+home-k3s (not just dev-kind) — losing it would require a new trust root
+and re-issuing every certificate in both environments, but would not by
+itself block database/identity recovery, which depends on the backup and
+SOPS keys above, not the CA key. Its own redundancy is still out of
+scope for *this* runbook's milestone — same deferred, disclosed status
+as the backup and SOPS keys above.
 
 A structural weakness worth stating plainly: currently the Mac holds
 both the backup ciphertext *and* the only copy of the key that decrypts

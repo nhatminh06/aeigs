@@ -44,9 +44,14 @@ Grafana's own admin credentials in PR 6.
 - Grafana's `auth_url` (browser-facing) and `token_url`/`api_url`
   (Grafana-backend-only, cluster-internal DNS) are deliberately different
   addresses — the browser and Grafana's server don't have the same
-  network view of Authentik. On `kind`, `auth_url` only resolves while
-  `authentik-server` is port-forwarded to `localhost:9000`; this is a
-  dev-only limitation to revisit once Authentik has a real ingress.
+  network view of Authentik. At the time this ADR was written,
+  `auth_url` on `kind` only resolved while `authentik-server` was
+  port-forwarded to `localhost:9000` — noted then as a dev-only
+  limitation to revisit once Authentik had a real ingress. **Resolved**:
+  dev-kind now has trusted HTTPS ingress via Cilium's Gateway API
+  (`auth.aegis.test`), so `auth_url` resolves normally through that
+  hostname; port-forwarding is debug/recovery fallback only, not the
+  normal access path.
 - Local admin/password login on Grafana was deliberately left enabled
   (`disable_login_form: false`) rather than forcing OIDC-only, so a
   broken OIDC config can't lock out access to a dev cluster.

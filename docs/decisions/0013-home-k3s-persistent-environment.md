@@ -199,3 +199,12 @@ own tooling would not.
 | Monitoring | Yes (Prometheus/Grafana, SLO rules) | Not yet |
 | Persistence | Cluster lifecycle only (rebuild is cheap) | Host-backed K3s state (survives service restart and full reboot, proven live) |
 | Application data | Ephemeral | Still stateless in Phase 1 |
+
+**Update (2026-08-19)**: this table is a Phase 1 snapshot, kept as
+written for the historical record — do not read it as current status.
+Gateway/TLS, monitoring, and persistent application data are all now
+"Yes" on home-k3s (nginx ingress + shared development CA per ADR 0015,
+Prometheus/Grafana, `stateful-lab` PostgreSQL + standalone Authentik
+PostgreSQL per ADR 0016). The accurate, currently-maintained comparison
+lives in `docs/architecture/README.md` and the README's own "Two
+environments" table.

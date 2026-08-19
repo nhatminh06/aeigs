@@ -292,10 +292,8 @@ reconstruction for Authentik specifically (mirroring stateful-lab's
 - Don't reuse dev-kind's OAuth client_id/client_secret or the CA/SOPS
   key handling patterns without checking they still apply — home-k3s
   has its own client credentials by design.
-- Don't add Authentik to the launchd backup schedule without a
-  deliberate decision recorded — it isn't scheduled today. Inspected
-  2026-08-19: `scripts/manage-backup-scheduler.sh`'s `LABELS` array and
-  `run-now backup|verify` sub-command are stateful-lab-specific by name;
-  adding Authentik isn't a drop-in two-plist addition, it needs the
-  script's target-selection restructured first (e.g. a `--target`
-  flag). Deferred for that reason, not decided against.
+- Authentik backups **are** scheduled (`com.aegis.authentik-backup` /
+  `com.aegis.authentik-restore-verify`, via `scripts/manage-backup-scheduler.sh`
+  — see this file's own "Backup" section above). Don't add a second,
+  separate scheduling mechanism — extend the existing four-target
+  scheduler if a fifth target is ever needed.

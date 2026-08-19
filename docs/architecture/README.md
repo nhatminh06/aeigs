@@ -337,7 +337,9 @@ unattended.
 `dev-kind` is disposable by design; it can't teach persistent
 control-plane state, host lifecycle, or reboot recovery. `home-k3s` is a
 second, independent environment on a real Linux host that does — not a
-replacement, and not yet carrying most of what `dev-kind` runs:
+replacement, and now carrying nearly everything `dev-kind` runs (ingress/
+TLS, observability, identity, persistent PostgreSQL, scheduled backups)
+except image automation, which is intentionally dev-kind-only:
 
 ```
                        Aegis Git (github.com/nhatminh06/aeigs)
