@@ -97,9 +97,10 @@ Implemented:
   before the restore), `pg_restore` from the off-host backup brought
   the exact identity back (same UUID, same non-admin state), and OIDC
   login to Grafana worked again — including after a real full host
-  reboot. Manual, single point-in-time backup restore only — no
-  schedule, no PITR, no empty-replacement-host reconstruction attempt
-  for Authentik specifically. See
+  reboot. Backup and restore-verification are now scheduled the same
+  way as stateful-lab's (see below) — no PITR, no
+  empty-replacement-host reconstruction attempt for Authentik
+  specifically. See
   docs/runbooks/home-k3s-authentik.md's "Destructive identity recovery"
   and docs/decisions/0016-home-k3s-authentik-identity.md
 - persistent PostgreSQL state on home-k3s (stateful-lab/postgresql/, its
@@ -122,16 +123,20 @@ Implemented:
   run K3s before. Not automatic disaster recovery, not production
   recovery, not zero-touch restore — a human operator ran every step.
   See docs/runbooks/home-k3s-recovery.md
-- PostgreSQL backups are generated on a schedule (macOS launchd, two
-  per-user agents — every 6h for backups, daily for a full scratch
-  restore), encrypted off-host, retained according to a documented
-  policy (latest 14 verified + a permanently protected
-  disaster-recovery baseline), and every backup is automatically
-  checked (checksum, decryptability, archive structure) with a daily
-  full restore proving the data itself. Restore remains a manual,
+- PostgreSQL backups are generated on a schedule (macOS launchd, four
+  per-user agents — a backup and a restore-verification agent for each
+  of stateful-lab and Authentik, every 6h for backups, daily for a full
+  scratch restore), encrypted off-host, retained according to a
+  documented policy (latest 14 verified + a permanently protected
+  disaster-recovery baseline per database family), and every backup is
+  automatically checked (checksum, decryptability, archive structure)
+  with a daily full restore proving the data itself. `scripts/backup-status.sh`
+  reports both database families' health separately — one family being
+  healthy never hides the other being stale. Restore remains a manual,
   operator-run step. Backup and SOPS age keys currently have no second
   protected copy — flagged, not solved. See
-  docs/runbooks/stateful-lab-postgresql-backup-restore.md
+  docs/runbooks/stateful-lab-postgresql-backup-restore.md and
+  docs/runbooks/home-k3s-authentik.md
 - home-k3s has undergone a controlled K3s version change with persistent
   application, identity, networking, security, TLS, observability, and
   backup functionality validated before and after a real host reboot.
@@ -143,13 +148,54 @@ Implemented:
   official installer mechanism (no datastore restore was needed for this
   same-Kubernetes-minor patch change). A cross-minor K8s version change
   remains untested. See docs/runbooks/home-k3s-upgrade.md
+- a systematic final security/hardening audit (RBAC, ServiceAccount
+  token automount, Pod securityContext, image pinning, host/network
+  exposure, Service types, NetworkPolicy selectors, Helm value
+  placement, Secret encryption, bootstrap/backup script secret hygiene,
+  local key-file permissions) found the existing baseline already
+  correct almost everywhere — no RBAC exists to overprivilege, token
+  automount and securityContext hardening were already complete, no
+  floating image tags, no unintended host exposure. The few concrete
+  findings were fixed live: predictable in-pod temp-file paths in the
+  Authentik backup/restore/verify scripts now use `mktemp` inside the
+  pod, every script that writes a plaintext dump now sets `umask 077`,
+  `~/.config/sops/age/` was tightened from 755 to 700, CI now also
+  builds `clusters/home-k3s` (previously dev-kind only) and runs
+  `shellcheck` against every script. Two findings were evaluated and
+  explicitly deferred rather than acted on without evidence: egress
+  NetworkPolicy (no Hubble relay installed to build a confident traffic
+  inventory) and automatic nginx certificate reload (the only
+  credential-free option weakens Pod process isolation for a rare,
+  single-operator event) — see "Not present yet" in
+  docs/architecture/README.md and docs/runbooks/home-k3s-nginx-cert-reload.md
 
-Planned:
-- empty-replacement-host Authentik reconstruction proof (mirroring
-  stateful-lab's own second proof)
-- wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
-- a second protected copy of the backup, SOPS, and development CA keys
-  (currently single-machine-only)
+# PLATFORM FEATURE SET FROZEN
+
+As of this milestone, Aegis's technical feature set is frozen. New
+tools or infrastructure require a concrete, unmet requirement — not
+"this tool is popular" or "production systems use it." Work after this
+point is bug fixes, version upgrades, documentation, and portfolio
+polish, not new platform capabilities.
+
+Accepted limitations (evaluated, not implemented, reasoning documented):
+- egress NetworkPolicy / namespace default-deny — no Hubble relay
+  installed on home-k3s to build a confident traffic inventory
+- automatic nginx TLS certificate reload — accepted manual
+  `kubectl rollout restart`, see docs/runbooks/home-k3s-nginx-cert-reload.md
+- recovery-root redundancy (a second protected copy of the SOPS,
+  backup, and development CA keys, and a second copy of the encrypted
+  backups) — no genuinely independent second storage location or
+  machine is currently available; faking redundancy on the same Mac
+  disk was explicitly rejected rather than done for appearances
+- cross-minor K3s version change / rollback — only a same-minor patch
+  cycle has been proven live
+- empty-replacement-host Authentik reconstruction — stateful-lab has
+  this second proof, Authentik does not yet
+
+Explicitly out of scope unless new evidence demands them: Vault,
+External Secrets Operator, Falco, service mesh, Loki, Tempo, Velero,
+Longhorn, Rook/Ceph, HA PostgreSQL, multi-node K3s, public ACME/Let's
+Encrypt, PITR/WAL archiving, MFA/federation.
 ```
 
 ## Owned workloads

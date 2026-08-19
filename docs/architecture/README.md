@@ -623,7 +623,18 @@ it):
 ## Not present yet
 
 Namespace-wide default deny, egress policy, and L7 policy (only the
-ingress boundaries above are enforced). Any node-level HA is not
+ingress boundaries above are enforced) — evaluated as part of the
+2026-08-19 final hardening pass and explicitly deferred, not overlooked:
+no Hubble relay is installed on home-k3s to build a confident live
+traffic inventory, and writing egress policy from static manifest
+reading alone (rather than observed flows) risked breaking legitimate
+dependencies (GitHub for Flux, GHCR/Sigstore/Rekor for Kyverno's image
+verification) more than it reduced a demonstrated risk. Revisit if
+Hubble is ever added for another reason. nginx does not automatically
+reload on a certificate rotation — evaluated the same day, accepted as a
+manual `kubectl rollout restart` step rather than adding a
+`shareProcessNamespace` sidecar for a rare, single-operator event; see
+`docs/runbooks/home-k3s-nginx-cert-reload.md`. Any node-level HA is not
 present on `home-k3s`. Cilium Gateway API is installed but not the
 active ingress mechanism there (ADR 0014/0015). Authentik's PostgreSQL
 destructive PVC/PV restore was proven live 2026-08-19 (below); an
