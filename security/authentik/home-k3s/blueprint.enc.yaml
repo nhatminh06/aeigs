@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: authentik-blueprints
+    namespace: authentik
+    # client_secret in this blueprint must match
+    # observability/kube-prometheus-stack/home-k3s/grafana-oidc.enc.yaml's
+    # client-secret key. Rotating one without the other breaks login.
+    # Distinct from dev-kind's client_id/client_secret and redirect URI —
+    # separate OIDC identities per environment, not a shared credential.
+stringData:
+    grafana-oidc.yaml: ENC[AES256_GCM,data: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,iv:MMdC5FvVqVQOIABLdCjwMvdvi+g24/gDiNxuHwaW9uo=,tag:E7iQaBBOJZVxAk+rUDGZmA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSByZ0t6dUFTU3BVa0hIdXN2
+            YVhCTkpmNW9TVGdSd0ZzWDZmVzBObkdHUmpNClQxVlVSS2FzOFF1VGQwMjNIWmlz
+            c3dHdE4zblluN1JLbGtWN0VYeVFuWkEKLS0tIG93amhFQ0lQZGgvSVM3VENhUVJH
+            eUJMM0x2OWtPR2xIN1JpMXJLTmVkSGcKXmDJpHQ+a4FSkXa2XjTMKA9WXXRp5929
+            40wRKE8m4LSRLNbviBNmkznnFJmZbnpXmctuAWNKl/gbvGyj1s94lg==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1gfycq3cyvq29hwkluywkhyc6rpt9y257u9ltltea769khtkysawslec0vw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-19T06:16:28Z"
+    mac: ENC[AES256_GCM,data:YREUgQSiQhPwKJfO/W5BVLsFCH/8wwpT06QVpkdWUaOGzFUZTyRcoG1Tq+qb8nfy6SJHF5qI8R9LPYueWM8D5RRvWw0lxmF9LRIMUDf39auUufcmsxmQyhUdMsicLDTnTY71V5a/WvbG1xMGTTf4TidWPxHHkhTFDXwUtg31EB4=,iv:NDfoo2amBECLwo51K/yCBTHl5T2QFz4+1iHY8iVmHyo=,tag:XVTHsHZRi61JsCkorYFS7A==,type:str]
+    version: 3.13.3

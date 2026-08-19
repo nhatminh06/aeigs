@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: grafana-oidc
+    namespace: observability
+    # client-secret here must match the client_secret set on the
+    # "grafana-home-k3s" provider in
+    # security/authentik/home-k3s/blueprint.enc.yaml. Rotating one
+    # without the other breaks the OIDC login.
+stringData:
+    client-secret: ENC[AES256_GCM,data:z1+EGmsFS5647acogrVEsJfCBN4rzYJ4KX6SS7RBs2Uwcb7QL82NCAQGhIo01xBh,iv:7OQtHS+yu4itz6WsVPsaSa7doDGclN3lxFpao7ZDQqE=,tag:9BQ6rXiaL/XeJerO9ZWY8w==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA5dXYwODRlNHZyd1VkMHBr
+            K3hvUGdSVldmSzlsYTA0NURGdkRWc3VWaWhRCmVRMmNGRkk2UGFhbG8yUktHUy9U
+            bnk5MmR0ak5zQVBGS3dZZ1haSlFsVFkKLS0tIExWZUlQZnYyZEMwd1BIcGVEZGZk
+            VElZSTg2Y2tnSmIyQjFIN0dnRnMrWlEKzhJzTKfE3V15pLPVXrMuSXhvU4Fwwlow
+            W7z0Xo42nnbjGYLRcng6MqqIdB5ls/9+nr1RSXF8hxe1ZFT9AMk6Cw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1gfycq3cyvq29hwkluywkhyc6rpt9y257u9ltltea769khtkysawslec0vw
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-19T06:16:36Z"
+    mac: ENC[AES256_GCM,data:POwONXK7nd7plF7dTehtcK6Kx5UO+V7ffkHNjc4n9HUtWd/FeRpkvNWrzixQpoIAVRlvo6Ok2XjWQxHjJLtJZm0vRbAJS7uNiH3+w5K1q+QlSTPOB6Sdo6OcHHNpuTu5xhKptlD2ZqCkt+HyK3dMW8Yc6AyPaA2v7TlTOsWwYF4=,iv:ujr/0pM6ipZAzt6mda5mHfc+QuVI8Yns0FoqDWjJBXQ=,tag:140qgroRL6aTHd6u4ATXeQ==,type:str]
+    version: 3.13.3

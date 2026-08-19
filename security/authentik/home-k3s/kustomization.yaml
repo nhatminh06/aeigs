@@ -7,6 +7,7 @@ resources:
   - postgresql-service.yaml
   - helmrepository.yaml
   - config.enc.yaml
+  - blueprint.enc.yaml
   - helmrelease.yaml
   - networkpolicy-postgresql.yaml
   - networkpolicy-server.yaml

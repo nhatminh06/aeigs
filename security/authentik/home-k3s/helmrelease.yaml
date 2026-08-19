@@ -91,7 +91,6 @@ spec:
         limits:
           cpu: 500m
           memory: 512Mi
-    # blueprints.secrets (Grafana OIDC provider/application) is added
-    # once Authentik itself is proven healthy — see
-    # security/authentik/home-k3s/blueprint.enc.yaml, added later in
-    # this same milestone once the base install is verified internally.
+    blueprints:
+      secrets:
+        - authentik-blueprints
