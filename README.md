@@ -89,9 +89,19 @@ Implemented:
   confirmed with an actual interactive browser OIDC login, verified
   server-side via Grafana's API. Local Grafana admin login stays
   available as a recovery fallback. Identity state has a verified
-  encrypted off-host PostgreSQL backup with scratch-restore proof —
-  destructive Authentik restore and empty-host reconstruction are not
-  yet proven. See docs/decisions/0016-home-k3s-authentik-identity.md
+  encrypted off-host PostgreSQL backup with scratch-restore proof, and
+  has been destructively restored: the PVC/PV/backing directory were
+  deliberately destroyed, Flux and Authentik's own Django migrations
+  rebuilt only the Kubernetes objects and schema (confirmed empty of
+  identity rows — the test user was absent and a login attempt failed
+  before the restore), `pg_restore` from the off-host backup brought
+  the exact identity back (same UUID, same non-admin state), and OIDC
+  login to Grafana worked again — including after a real full host
+  reboot. Manual, single point-in-time backup restore only — no
+  schedule, no PITR, no empty-replacement-host reconstruction attempt
+  for Authentik specifically. See
+  docs/runbooks/home-k3s-authentik.md's "Destructive identity recovery"
+  and docs/decisions/0016-home-k3s-authentik-identity.md
 - persistent PostgreSQL state on home-k3s (stateful-lab/postgresql/, its
   own namespace, never Authentik's database): a known data invariant
   survives Pod recreation, a StatefulSet rollout restart, a K3s service
@@ -124,10 +134,9 @@ Implemented:
   docs/runbooks/stateful-lab-postgresql-backup-restore.md
 
 Planned:
-- destructive Authentik PostgreSQL restore + empty-host Authentik reconstruction proof
+- empty-replacement-host Authentik reconstruction proof (mirroring
+  stateful-lab's own second proof)
 - wider NetworkPolicy (namespace default-deny, egress), designed from further traffic evidence
-- Authentik on home-k3s — deliberately deferred, needs its own
-  persistent-PostgreSQL/backup/NetworkPolicy design, not a copy of dev-kind's
 - a second protected copy of the backup, SOPS, and development CA keys
   (currently single-machine-only)
 ```

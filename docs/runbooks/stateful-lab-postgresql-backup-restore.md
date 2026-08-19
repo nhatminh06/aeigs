@@ -23,7 +23,14 @@ query, before and after, matching byte-for-byte.
 Authentik has a completely separate PostgreSQL instance, backup script
 family, backup root, and status file — never mix the two artifact
 families together. See `docs/runbooks/home-k3s-authentik.md`'s "Backup"
-section and `docs/decisions/0016-home-k3s-authentik-identity.md`.
+and "Destructive identity recovery" sections and
+`docs/decisions/0016-home-k3s-authentik-identity.md`. Authentik's own
+destructive PVC-loss restore was proven live on 2026-08-19, using
+`scripts/restore-authentik-postgres.sh` — same shape as
+`restore-stateful-lab-postgres.sh` below, adapted for Authentik's
+pre-existing schema on restore (see that runbook for why
+`--replace-existing` there drops and recreates the whole database rather
+than using `--clean --if-exists`).
 
 ## Backup strategy: logical (`pg_dump`), not volume-level
 

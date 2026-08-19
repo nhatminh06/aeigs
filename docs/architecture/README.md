@@ -501,6 +501,33 @@ that Flux alone left the database empty) is in
 itself remains a deliberate, manual, operator-run step — no PITR, no WAL
 archiving, no automatic disaster recovery.
 
+The same shape was proven for Authentik's own identity database on
+2026-08-19 — a DB-only, non-Git test identity (`aegis-recovery-test`) as
+the load-bearing proof that Git/Flux reconstruction, and Authentik's own
+Django schema migrations, do not by themselves recreate identity rows:
+
+```
+Authentik PVC/PV/data lost
+        |
+        v
+   Aegis Git -> Flux -> recreates the StatefulSet, NEW empty PVC
+        |
+        v
+   Django migrations re-run against the fresh database
+   (schema returns; identity rows do not)
+        |
+        v
+   (aegis-recovery-test confirmed absent at this point — not assumed)
+        |
+        v
+   off-host encrypted backup -> pg_restore -> identity returns,
+   OIDC login to Grafana works again, survives a full host reboot
+```
+
+Full evidence is in `docs/runbooks/home-k3s-authentik.md`'s "Destructive
+identity recovery". Unlike stateful-lab, this proof was not repeated on
+an empty replacement host.
+
 ### Scheduled backup operations
 
 ```
@@ -599,8 +626,10 @@ Namespace-wide default deny, egress policy, and L7 policy (only the
 ingress boundaries above are enforced). Any node-level HA is not
 present on `home-k3s`. Cilium Gateway API is installed but not the
 active ingress mechanism there (ADR 0014/0015). Authentik's PostgreSQL
-destructive restore and empty-host reconstruction are not yet proven —
-only Pod loss, K3s restart, and a real host reboot are (ADR 0016). The
+destructive PVC/PV restore was proven live 2026-08-19 (below); an
+empty-replacement-host reconstruction for Authentik specifically has not
+been attempted (only stateful-lab's database has that second proof).
+The
 development CA is trusted only by clients that explicitly import it —
 this is not a publicly trusted certificate and must not be described as
 one. Automatic rollback, progressive delivery/canary release, or any
