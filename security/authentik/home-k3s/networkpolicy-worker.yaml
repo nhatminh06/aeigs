@@ -1,0 +1,19 @@
+# Ingress listed with no rules below: deny all inbound. Re-verified live
+# for home-k3s, not assumed from dev-kind's evidence: no Service selects
+# the worker (authentik-worker.authentik.svc.cluster.local doesn't even
+# resolve), its probes are exec-based, and no ServiceMonitor references
+# it. Egress is untouched — its connections out to PostgreSQL are
+# unaffected by an ingress-only policy.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: authentik-worker-ingress
+  namespace: authentik
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: authentik
+      app.kubernetes.io/instance: authentik
+      app.kubernetes.io/component: worker
+  policyTypes:
+    - Ingress

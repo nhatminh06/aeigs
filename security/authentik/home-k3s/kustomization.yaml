@@ -8,3 +8,6 @@ resources:
   - helmrepository.yaml
   - config.enc.yaml
   - helmrelease.yaml
+  - networkpolicy-postgresql.yaml
+  - networkpolicy-server.yaml
+  - networkpolicy-worker.yaml

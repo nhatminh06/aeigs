@@ -1,0 +1,29 @@
+# Own PostgreSQL instance, own policy — never shares stateful-lab's or
+# reuses dev-kind's. Confirmed live before this policy existed: an
+# unrelated pod reached 5432 directly (nc -zv reported open).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: authentik-postgresql-ingress
+  namespace: authentik
+spec:
+  podSelector:
+    matchLabels:
+      app: authentik-postgresql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: authentik
+              app.kubernetes.io/instance: authentik
+              app.kubernetes.io/component: server
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: authentik
+              app.kubernetes.io/instance: authentik
+              app.kubernetes.io/component: worker
+      ports:
+        - protocol: TCP
+          port: 5432

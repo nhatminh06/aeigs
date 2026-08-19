@@ -1,0 +1,48 @@
+# home-k3s's ingress is an ordinary Kubernetes workload (unlike
+# dev-kind's Cilium Gateway, whose Envoy backend connection needs a
+# CiliumNetworkPolicy exception for reserved:ingress — see
+# security/authentik/ciliumnetworkpolicy-server-gateway.yaml). Confirmed
+# live via cilium-dbg monitor: ingress-nginx reaches the server under an
+# ordinary workload identity (3285 -> 6285), so a single portable
+# NetworkPolicy covers both the browser path (via the ingress) and
+# Grafana's own OIDC backend calls — no Cilium-specific policy needed
+# here. See docs/decisions/0016-home-k3s-authentik-identity.md.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: authentik-server-ingress
+  namespace: authentik
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: authentik
+      app.kubernetes.io/instance: authentik
+      app.kubernetes.io/component: server
+  policyTypes:
+    - Ingress
+  ingress:
+    # Browser-facing traffic via the home-k3s nginx ingress.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-system
+          podSelector:
+            matchLabels:
+              app: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 9000
+    # Grafana's OIDC backend calls (token_url/api_url) — cluster-internal
+    # Service DNS, same reasoning as dev-kind's policy.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: grafana
+      ports:
+        - protocol: TCP
+          port: 9000
+  # Not listed, deliberately: authentik-worker (no observed flow to
+  # :9000), Prometheus (nothing scrapes the server's metrics port).
