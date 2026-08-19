@@ -52,15 +52,20 @@ spec:
         server:
           # Grafana builds the OAuth redirect_uri from this, so it must
           # match the Authentik provider's registered redirect URI
-          # exactly, including the scheme.
-          root_url: https://grafana.aegis.home.arpa/
+          # exactly, including the scheme AND the port. home-k3s's
+          # ingress is exposed on a NodePort (30443), not the browser's
+          # implicit 443 — omitting the port here sends the browser to
+          # a listener that doesn't exist and the OAuth flow hangs
+          # (observed live: "sign in" spins forever). Fixed by making
+          # every hostname reference below explicit about the port.
+          root_url: https://grafana.aegis.home.arpa:30443/
         auth.generic_oauth:
           enabled: true
           name: Authentik
           client_id: bf212636c078e13940374b77f00a0e0f64f0a397
           scopes: "openid profile email"
           # Browser-facing: the user's browser is redirected here.
-          auth_url: https://auth.aegis.home.arpa/application/o/authorize/
+          auth_url: https://auth.aegis.home.arpa:30443/application/o/authorize/
           # Backend-only calls made by Grafana's server — cluster-internal
           # Service DNS, not the public hostname. See the header comment.
           token_url: http://authentik-server.authentik.svc.cluster.local/application/o/token/
