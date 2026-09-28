@@ -1,8 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "description": [
-    "Built-in managers only. Verified by dry-run extraction against this repo: Helm chart versions in the three HelmReleases, the podinfo image, GitHub Action SHA pins, and the Flux version in gotk-components.yaml are all detected.",
-    "NOT detected by any built-in manager, confirmed by the same dry-run: the kindest/node tag+digest in bootstrap/kind/cluster.yaml, and the gitleaks / kyverno-CLI / kubectl versions and checksums embedded in .github/workflows/repo-security.yml. Those are shell strings and a kind config, not package files. They need regex customManagers, which are deliberately deferred until this config has been observed running."
+    "Built-in managers detect Helm releases, application images, GitHub Action SHA pins, and Flux in gotk-components.yaml. Narrow regex managers cover the kindest/node tag+digest and the Gitleaks, Kyverno CLI, kubectl, and kubeconform version variables.",
+    "Binary checksums remain hard-coded trust checks: Renovate updates a CLI version, then CI fails against the old checksum until a reviewer verifies the new release's published SHA-256 and updates it. Renovate never removes or bypasses checksum verification.",
+    "FLUX_VERSION and its schema checksum are deliberately not managed here because they must follow the deployed Flux release together. KUBERNETES_SCHEMA_COMMIT is also excluded because it is a source commit pin without a semantic release relationship."
   ],
   "extends": [
     "config:recommended"
@@ -23,7 +24,88 @@
       "/^apps/.+/deployment\\.yaml$/"
     ]
   },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update the kind node tag and registry digest together",
+      "managerFilePatterns": [
+        "/^bootstrap/kind/cluster\\.yaml$/"
+      ],
+      "matchStrings": [
+        "image: (?<depName>kindest/node):(?<currentValue>v[0-9]+\\.[0-9]+\\.[0-9]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Update checksum-verified CLI version variables; checksums require verified manual updates",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/repo-security\\.yml$/"
+      ],
+      "matchStrings": [
+        "GITLEAKS_VERSION: (?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)"
+      ],
+      "depNameTemplate": "gitleaks CLI",
+      "packageNameTemplate": "gitleaks/gitleaks",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Update checksum-verified CLI version variables; checksums require verified manual updates",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/repo-security\\.yml$/"
+      ],
+      "matchStrings": [
+        "KYVERNO_CLI_VERSION: (?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)"
+      ],
+      "depNameTemplate": "kyverno CLI",
+      "packageNameTemplate": "kyverno/kyverno",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Update checksum-verified CLI version variables; checksums require verified manual updates",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/repo-security\\.yml$/"
+      ],
+      "matchStrings": [
+        "KUBECTL_VERSION: (?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)"
+      ],
+      "depNameTemplate": "kubectl",
+      "packageNameTemplate": "kubernetes/kubernetes",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Update checksum-verified CLI version variables; checksums require verified manual updates",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/repo-security\\.yml$/"
+      ],
+      "matchStrings": [
+        "KUBECONFORM_VERSION: (?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)"
+      ],
+      "depNameTemplate": "kubeconform",
+      "packageNameTemplate": "yannh/kubeconform",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    }
+  ],
   "packageRules": [
+    {
+      "description": "Keep kubectl on the repository's explicitly chosen Kubernetes minor baseline",
+      "matchDepNames": [
+        "kubectl"
+      ],
+      "allowedVersions": ">=1.36.0 <1.37.0"
+    },
     {
       "description": "Flux applies whatever lands on main, so an automerged update would deploy itself to the cluster without anyone reading it. Every update here is infrastructure and gets human review first.",
       "matchPackageNames": [

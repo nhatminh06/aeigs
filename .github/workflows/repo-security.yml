@@ -8,6 +8,10 @@ on:
 jobs:
   gitleaks:
     runs-on: ubuntu-latest
+    env:
+      # Renovate updates the version only. The unchanged checksum makes CI
+      # fail until a reviewer verifies and records the new published SHA-256.
+      GITLEAKS_VERSION: 8.30.1
     steps:
       # Pinned to commit SHA, not the mutable v7.0.1 tag — a tag can be
       # moved; a SHA can't.
@@ -17,7 +21,7 @@ jobs:
       - name: Install gitleaks
         run: |
           curl -sSL -o gitleaks.tar.gz \
-            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tar.gz" | sha256sum -c -
           tar -xzf gitleaks.tar.gz gitleaks
       - name: Scan for committed secrets
@@ -36,12 +40,16 @@ jobs:
 
   kyverno-policy-test:
     runs-on: ubuntu-latest
+    env:
+      # Renovate updates the version only. The unchanged checksum makes CI
+      # fail until a reviewer verifies and records the new published SHA-256.
+      KYVERNO_CLI_VERSION: 1.18.2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install kyverno CLI
         run: |
           curl -sSL -o kyverno-cli.tar.gz \
-            https://github.com/kyverno/kyverno/releases/download/v1.18.2/kyverno-cli_v1.18.2_linux_x86_64.tar.gz
+            "https://github.com/kyverno/kyverno/releases/download/v${KYVERNO_CLI_VERSION}/kyverno-cli_v${KYVERNO_CLI_VERSION}_linux_x86_64.tar.gz"
           echo "cb2feb8356149fd2fe774c894ccf0969f4a60a83867dd913af724f74ffbbc18b  kyverno-cli.tar.gz" | sha256sum -c -
           tar -xzf kyverno-cli.tar.gz kyverno
       # Static rule-logic check only — evaluates each fixture as a single
@@ -55,6 +63,9 @@ jobs:
   kustomize-build:
     runs-on: ubuntu-latest
     env:
+      # Renovate updates CLI versions only. Their unchanged checksums make CI
+      # fail until a reviewer verifies and records each new published SHA-256.
+      KUBECTL_VERSION: 1.36.1
       KUBECONFORM_VERSION: 0.8.0
       FLUX_VERSION: 2.9.4
       KUBERNETES_SCHEMA_COMMIT: a6f9a32d2ccb64b6e4f5b41419b9c2e8ee0cce18
@@ -69,7 +80,7 @@ jobs:
       - name: Install kubectl
         run: |
           curl -sSL -o kubectl \
-            https://dl.k8s.io/release/v1.36.1/bin/linux/amd64/kubectl
+            "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
           echo "629d3f410e09bf49b64ae7079f7f0bda1191efed311f7d37fdbab0ad5b0ec2b7  kubectl" | sha256sum -c -
           chmod +x kubectl
       - name: Install kubeconform and Flux schemas
