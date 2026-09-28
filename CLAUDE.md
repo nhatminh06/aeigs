@@ -7,9 +7,9 @@ task notes belong in PR descriptions or commit messages, not here.
 ## Project purpose
 
 Aegis is a self-hosted Kubernetes platform managed with FluxCD (GitOps).
-Git is the source of truth for cluster state; a local `kind` cluster is the
-primary development/test environment; a persistent home cluster (K3s or
-later Talos) and an optional AWS EKS environment are long-term targets.
+Git is the source of truth for cluster state; `dev-kind` is the disposable
+local development/test environment; `home-k3s` is the persistent home
+validation environment.
 Security controls (admission policy, secret encryption, image scanning and
 signing, network isolation, identity) are added incrementally as the
 platform matures.
@@ -25,13 +25,12 @@ must match reality — see "Status honesty" below.
   changes are temporary debugging only and are expected to be reverted by
   Flux reconciliation.
 - FluxCD is the GitOps reconciler for every cluster.
-- `kind` is the local, disposable development/test environment. It is never
-  removed in favor of a persistent cluster — persistent clusters (home,
-  cloud) are additional environments, not replacements.
-- Home infrastructure will later use K3s, with Talos evaluated separately
-  as a deliberate comparison, not because it's more interesting.
-- Cloud environments (if built) reuse the same GitOps and security patterns
-  as `kind`/home rather than inventing cloud-specific architecture.
+- `dev-kind` is the local, disposable development/test environment. It is
+  not replaced by the persistent `home-k3s` environment; each has a distinct
+  purpose and lifecycle.
+- `home-k3s` is the persistent K3s home environment.
+- New environments reuse the same GitOps and security patterns where those
+  patterns fit rather than inventing environment-specific architecture.
 - Security is layered (repo, build, GitOps, admission, secrets, identity,
   network, runtime) and layers are added one at a time, each tested before
   the next begins.
@@ -47,7 +46,10 @@ must match reality — see "Status honesty" below.
 - Directories are created when a milestone actually needs them, not in
   advance. The long-term repository shape is documented in project
   planning, not pre-built as empty scaffolding.
-- Environments live under `clusters/<name>/` (`dev-kind`, `home`, `cloud`).
+- Environments live under `clusters/<name>/`. The current environments are
+  `dev-kind`, for disposable local validation, and `home-k3s`, for persistent
+  home validation. New environments use descriptive names and are documented
+  as implemented only when they exist.
 - Flux resources for a cluster live under that cluster's directory;
   reusable manifests live under `infrastructure/`, `security/`,
   `observability/`, `apps/`, etc., and are referenced by Kustomizations,
