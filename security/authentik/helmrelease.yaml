@@ -113,10 +113,12 @@ spec:
         # 256Mi OOMKilled the worker in practice (observed on dev-kind
         # after this HelmRelease first went live) — it's the same Django
         # app as the server process, running background tasks/blueprint
-        # application, not a lighter process. Matched to server's limit.
+        # application, not a lighter process. A manual blueprint apply during the
+        # SOPS recovery was OOM-killed at 512Mi, so use the server's proven
+        # 768Mi ceiling for this recovery-critical operation too.
         limits:
           cpu: 500m
-          memory: 512Mi
+          memory: 768Mi
     blueprints:
       secrets:
         - authentik-blueprints
