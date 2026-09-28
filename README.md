@@ -392,6 +392,7 @@ capabilities.
 | Runbook | When to use it |
 |---|---|
 | [`aegis-api-bad-release.md`](docs/runbooks/aegis-api-bad-release.md) | A signed, admitted release is misbehaving |
+| [`dependency-upgrade.md`](docs/runbooks/dependency-upgrade.md) | Evaluating, applying, validating, and recording a dependency upgrade |
 | [`home-k3s-authentik.md`](docs/runbooks/home-k3s-authentik.md) | Authentik/Grafana OIDC health, recovery, or backup scheduling |
 | [`home-k3s-ingress-recovery.md`](docs/runbooks/home-k3s-ingress-recovery.md) | nginx ingress routing/TLS issues |
 | [`home-k3s-nginx-cert-reload.md`](docs/runbooks/home-k3s-nginx-cert-reload.md) | A rotated certificate isn't being served yet |
