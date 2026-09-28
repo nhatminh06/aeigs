@@ -247,7 +247,7 @@ what recovers from where.
 | PostgreSQL backup (age-encrypted) | Mutable database rows and identity state |
 | Development CA | The same local TLS trust root across both environments |
 | GHCR | Application container images |
-| Operator recovery material | The expected SOPS key is currently unavailable; fresh reconstruction is blocked pending recovery or a deliberate secret migration. See the [SOPS key recovery runbook](docs/runbooks/sops-key-recovery.md). |
+| Operator recovery material | A new SOPS identity is active and all 11 Git-managed secrets were recreated; the operator confirms an independent protected key copy exists. The old ciphertext and private key are intentionally abandoned. See the [SOPS key recovery runbook](docs/runbooks/sops-key-recovery.md). |
 
 **Git is not a database backup.** Every destructive-recovery experiment in
 this project exists specifically to prove that distinction: Flux always
@@ -348,7 +348,7 @@ steps, no secrets shown — is in [`docs/demo.md`](docs/demo.md).
 - No MFA / identity federation
 - nginx does not auto-reload on certificate rotation — accepted, documented manual step ([runbook](docs/runbooks/home-k3s-nginx-cert-reload.md))
 - No egress NetworkPolicy — evaluated, deferred (no Hubble relay on home-k3s to build a confident traffic inventory)
-- **Unavailable SOPS recovery root**: the original SOPS private key has not been recovered on the current workstation and no second protected copy is established. Existing ciphertext cannot be decrypted and fresh reconstruction remains blocked; see the [recovery inventory and migration gates](docs/runbooks/sops-key-recovery.md).
+- **SOPS identity reset**: the original private key and ciphertext were abandoned; all 11 Git-managed secrets now use the replacement recipient, whose private key has an operator-confirmed independent protected copy. The separate development CA is still unavailable, so fresh dev ingress and browser OIDC validation remain blocked; see the [recovery runbook](docs/runbooks/sops-key-recovery.md).
 - Cross-minor K3s version change is untested (only a same-minor patch cycle has been proven live)
 - External dependencies: GitHub, GHCR, Sigstore (Fulcio/Rekor) must be reachable for full supply-chain verification
 
