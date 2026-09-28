@@ -4,6 +4,12 @@ metadata:
   name: authentik
   namespace: authentik
 spec:
+  # Fresh-database migrations exceeded the chart's default 5m timeout during
+  # the SOPS disaster-recovery rebuild; match home-k3s's proven allowance.
+  timeout: 10m0s
+  install:
+    remediation:
+      retries: 3
   interval: 1h
   chart:
     spec:
