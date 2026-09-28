@@ -605,7 +605,7 @@ it's lost:
 | Asset | Stored where | Required for | If lost |
 |---|---|---|---|
 | Aegis Git repository | GitHub | Kubernetes desired state | Blocking — nothing rebuilds without it (unless a separate clone/mirror exists) |
-| SOPS age private key | Off-host (`~/.config/sops/age/`) | Decrypting Git-managed `Secret` objects | Blocking — encrypted Secrets stay undecryptable forever |
+| SOPS age private key | Expected off-host at `~/.config/sops/age/`; currently unavailable | Decrypting Git-managed `Secret` objects | Blocking — current encrypted Secrets are undecryptable unless the original key is recovered; safe migration requires recreating every secret |
 | PostgreSQL backup artifacts | Off-host (Mac, `~/.local/share/aegis/backups/{stateful-lab,authentik}/`) | Database schema + rows (two separate families — stateful-lab and Authentik never share an artifact) | Blocking for data recovery — infrastructure still rebuilds, database stays empty |
 | PostgreSQL backup age key | Off-host (`~/.config/aegis/backup/age/`) | Decrypting both backup artifact families (same key, one trust purpose) | Blocking — the backup files alone are useless without it |
 | GHCR | External registry | `aegis-api` container image | Application reconstruction impacted; Kubernetes/database recovery unaffected |
@@ -618,7 +618,7 @@ it):
 | Machine lost | Consequence |
 |---|---|
 | CachyOS (K3s host) | Recoverable — proven live on a replacement host, given Git + the SOPS key + the off-host backup + backup key |
-| Mac (control workstation) | **The current single point of failure**: holds the only copies of both the backup ciphertext and the backup age key (and the SOPS age key). Losing it loses recoverability entirely until a second protected copy of both keys exists — see "Key redundancy" in `docs/runbooks/stateful-lab-postgresql-backup-restore.md`, currently unresolved. |
+| Operator workstation | The expected SOPS identity is currently unavailable and no redundant copy has been verified, so Git-managed Secrets cannot be reconstructed. Backup and CA recovery roots remain separate dependencies. See `docs/runbooks/sops-key-recovery.md`. |
 | GitHub (Aegis Git) | Blocking for reconstruction until available again or a local mirror exists |
 | GHCR | Blocks pulling a new `aegis-api` image; already-running Pods and Kubernetes/database recovery are unaffected |
 
