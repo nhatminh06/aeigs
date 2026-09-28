@@ -451,12 +451,14 @@ storage if it handles small binary/text files appropriately) — this is
 a manual step, not something this tooling can do on the user's behalf
 safely.
 
-**SOPS age key** (`~/.config/sops/age/keys.txt`): same exposure, same
-unresolved state, same required action — it is the *other* critical
-reconstruction dependency (decrypts every `Secret` Git carries) and
-currently also lives only on this Mac. Deliberately not merged with the
-backup key — they represent different trust purposes and should keep
-independent second copies, not share one.
+**SOPS age key** (`~/.config/sops/age/keys.txt`): the expected original
+identity is currently unavailable and no second protected copy has been
+verified. Existing Git-managed Secrets therefore cannot be decrypted during
+fresh reconstruction. Do not replace it casually: follow
+`docs/runbooks/sops-key-recovery.md` to recover the original identity or prove
+that every encrypted value can be recreated before adopting a new recipient.
+The SOPS and backup identities remain separate trust purposes and must not be
+collapsed into one key.
 
 **Development CA key** (`~/.config/aegis/pki/`): home-k3s's nginx
 ingress now serves TLS from this same shared development CA
