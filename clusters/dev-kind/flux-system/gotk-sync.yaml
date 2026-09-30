@@ -12,7 +12,7 @@ metadata:
 spec:
   interval: 1m0s
   ref:
-    branch: main
+    branch: renovate/kube-prometheus-stack-88.x
   # No secretRef: this repo is public, and anonymous HTTPS can already
   # read it — verified both with `git ls-remote` (credential helpers
   # disabled) and live, by removing this field from the running
