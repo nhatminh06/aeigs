@@ -8,6 +8,10 @@ on:
 jobs:
   gitleaks:
     runs-on: ubuntu-latest
+    env:
+      # Renovate updates the version only. The unchanged checksum makes CI
+      # fail until a reviewer verifies and records the new published SHA-256.
+      GITLEAKS_VERSION: 8.30.1
     steps:
       # Pinned to commit SHA, not the mutable v7.0.1 tag — a tag can be
       # moved; a SHA can't.
@@ -17,7 +21,7 @@ jobs:
       - name: Install gitleaks
         run: |
           curl -sSL -o gitleaks.tar.gz \
-            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tar.gz" | sha256sum -c -
           tar -xzf gitleaks.tar.gz gitleaks
       - name: Scan for committed secrets
@@ -36,12 +40,16 @@ jobs:
 
   kyverno-policy-test:
     runs-on: ubuntu-latest
+    env:
+      # Renovate updates the version only. The unchanged checksum makes CI
+      # fail until a reviewer verifies and records the new published SHA-256.
+      KYVERNO_CLI_VERSION: 1.18.2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install kyverno CLI
         run: |
           curl -sSL -o kyverno-cli.tar.gz \
-            https://github.com/kyverno/kyverno/releases/download/v1.18.2/kyverno-cli_v1.18.2_linux_x86_64.tar.gz
+            "https://github.com/kyverno/kyverno/releases/download/v${KYVERNO_CLI_VERSION}/kyverno-cli_v${KYVERNO_CLI_VERSION}_linux_x86_64.tar.gz"
           echo "cb2feb8356149fd2fe774c894ccf0969f4a60a83867dd913af724f74ffbbc18b  kyverno-cli.tar.gz" | sha256sum -c -
           tar -xzf kyverno-cli.tar.gz kyverno
       # Static rule-logic check only — evaluates each fixture as a single
@@ -54,6 +62,13 @@ jobs:
 
   kustomize-build:
     runs-on: ubuntu-latest
+    env:
+      # Renovate updates CLI versions only. Their unchanged checksums make CI
+      # fail until a reviewer verifies and records each new published SHA-256.
+      KUBECTL_VERSION: 1.36.1
+      KUBECONFORM_VERSION: 0.8.0
+      FLUX_VERSION: 2.9.5
+      KUBERNETES_SCHEMA_COMMIT: a6f9a32d2ccb64b6e4f5b41419b9c2e8ee0cce18
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Pinned + checksum-verified rather than using the runner's
@@ -65,9 +80,21 @@ jobs:
       - name: Install kubectl
         run: |
           curl -sSL -o kubectl \
-            https://dl.k8s.io/release/v1.36.1/bin/linux/amd64/kubectl
+            "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
           echo "629d3f410e09bf49b64ae7079f7f0bda1191efed311f7d37fdbab0ad5b0ec2b7  kubectl" | sha256sum -c -
           chmod +x kubectl
+      - name: Install kubeconform and Flux schemas
+        run: |
+          curl -sSL -o kubeconform.tar.gz \
+            "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+          echo "9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883  kubeconform.tar.gz" | sha256sum -c -
+          tar -xzf kubeconform.tar.gz kubeconform
+
+          curl -sSL -o flux-crd-schemas.tar.gz \
+            "https://github.com/fluxcd/flux2/releases/download/v${FLUX_VERSION}/crd-schemas.tar.gz"
+          echo "3c6c976df251e5a7e8c1c6a0ee63e6c28026d568b14ffa2f13cc32a6a564f238  flux-crd-schemas.tar.gz" | sha256sum -c -
+          mkdir flux-crd-schemas
+          tar -xzf flux-crd-schemas.tar.gz -C flux-crd-schemas
       # Catches a broken GitOps composition (missing resource, bad path,
       # malformed kustomization) before Flux would fail to apply it in
       # cluster. This builds the manifests only — it does not validate
@@ -76,6 +103,32 @@ jobs:
         run: ./kubectl kustomize clusters/dev-kind > /dev/null
       - name: Build home-k3s manifests
         run: ./kubectl kustomize clusters/home-k3s > /dev/null
+      # This validates rendered resources against pinned Kubernetes and Flux
+      # schemas; it is not live API-server validation. kubeconform's Kubernetes
+      # catalog has no schema for CRD definition objects, so only that exact
+      # kind is skipped. Flux custom resources are still validated against the
+      # official schemas from the pinned Flux release. Any other missing schema
+      # or schema violation fails the job.
+      - name: Validate dev-kind manifest schemas
+        run: |
+          ./kubectl kustomize clusters/dev-kind | ./kubeconform \
+            -strict \
+            -summary \
+            -kubernetes-version 1.36.0 \
+            -schema-location "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/${KUBERNETES_SCHEMA_COMMIT}/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json" \
+            -schema-location "file://${PWD}/flux-crd-schemas/{{.ResourceKind}}{{.KindSuffix}}.json" \
+            -skip CustomResourceDefinition \
+            -
+      - name: Validate home-k3s manifest schemas
+        run: |
+          ./kubectl kustomize clusters/home-k3s | ./kubeconform \
+            -strict \
+            -summary \
+            -kubernetes-version 1.36.0 \
+            -schema-location "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/${KUBERNETES_SCHEMA_COMMIT}/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json" \
+            -schema-location "file://${PWD}/flux-crd-schemas/{{.ResourceKind}}{{.KindSuffix}}.json" \
+            -skip CustomResourceDefinition \
+            -
 
   shellcheck:
     runs-on: ubuntu-latest

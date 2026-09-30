@@ -91,3 +91,10 @@ rebuild.
 - This ADR governs only the development CA's root of trust. It says
   nothing about a future home or cloud environment's PKI, which is
   explicitly out of scope here and would need its own decision.
+
+## 2026-09-28 recovery addendum
+
+The old development CA was permanently lost. A replacement CA was intentionally
+generated with `scripts/bootstrap-pki.sh --init`, and an independent protected
+backup is confirmed. Trusted HTTPS validation passed, and the real Grafana →
+Authentik → Grafana browser login succeeded.
