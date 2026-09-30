@@ -65,7 +65,7 @@ jobs:
     env:
       # Renovate updates CLI versions only. Their unchanged checksums make CI
       # fail until a reviewer verifies and records each new published SHA-256.
-      KUBECTL_VERSION: 1.36.1
+      KUBECTL_VERSION: 1.36.5
       KUBECONFORM_VERSION: 0.8.0
       FLUX_VERSION: 2.9.5
       KUBERNETES_SCHEMA_COMMIT: a6f9a32d2ccb64b6e4f5b41419b9c2e8ee0cce18
@@ -81,7 +81,7 @@ jobs:
         run: |
           curl -sSL -o kubectl \
             "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
-          echo "629d3f410e09bf49b64ae7079f7f0bda1191efed311f7d37fdbab0ad5b0ec2b7  kubectl" | sha256sum -c -
+          echo "33bc88a24c3b09cf55bfd59e6ca977881b61fc3f25ab65bc80c65b430248648e  kubectl" | sha256sum -c -
           chmod +x kubectl
       - name: Install kubeconform and Flux schemas
         run: |
