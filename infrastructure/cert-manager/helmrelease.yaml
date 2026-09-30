@@ -11,7 +11,7 @@ spec:
       # v1.21 is the only currently supported line that lists Kubernetes
       # 1.36 in its tested range (1.33-1.36); v1.20 stops at 1.35. This
       # cluster runs 1.36.1, so the choice is compatibility, not recency.
-      version: "v1.21.1"
+      version: "v1.21.2"
       sourceRef:
         kind: HelmRepository
         name: jetstack
