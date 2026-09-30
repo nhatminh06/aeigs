@@ -73,7 +73,7 @@ share a control plane. See below for exactly how and why they diverge.
 
 | Area | Implementation | Evidence |
 |---|---|---|
-| GitOps | Flux v2.9.4, anonymous Git read, no runtime Git token | Manual drift (`kubectl scale`) reconciled automatically within ~1 poll interval |
+| GitOps | Flux v2.9.5, anonymous Git read, no runtime Git token | Manual drift (`kubectl scale`) reconciled automatically within ~1 poll interval |
 | Secrets | SOPS + age, no plaintext credential ever committed | Fresh-cluster decryption tested during every rebuild |
 | Admission | Kyverno (`disallow-privileged-containers`, `disallow-latest-tag`, `verify-aegis-api-image`) | 20/20 static tests pass; live signed-allow / unsigned-deny / wrong-signer-deny |
 | Networking | Cilium + Kubernetes NetworkPolicy | Lateral movement to Authentik's PostgreSQL flipped from `ALLOWED` to `DENIED`, verified via Hubble |
@@ -287,6 +287,32 @@ brings mutable rows back.
 | `scripts/` | Bootstrap, backup, restore, and verification tooling |
 | `ops/launchd/` | macOS scheduler templates for the backup agents |
 
+## Verify the repository
+
+Run the same static verification logic used by CI:
+
+```sh
+./scripts/verify-repo.sh
+```
+
+The verifier checks Shell scripts, Kyverno fixtures, dev and home Kustomize
+renders, strict Kubernetes/Flux schemas, committed secrets, Renovate config,
+and Git whitespace. It does not contact a cluster or decrypt SOPS files.
+
+Local prerequisites are `shellcheck`, `kubectl` 1.36.5, `kubeconform` 0.8.0,
+Kyverno CLI 1.19.1, Gitleaks 8.30.1, Docker, and the official Flux 2.9.5
+schemas with `FLUX_SCHEMA_DIR` set to their extracted directory. Trivy runs
+locally when its binary is installed; the pinned Trivy action remains a
+required CI-only check otherwise. Binary path overrides such as
+`KUBECTL_BIN`, `KUBECONFORM_BIN`, `KYVERNO_BIN`, and `GITLEAKS_BIN` are
+available for CI and local tool directories.
+
+This is repository verification, not runtime evidence. See the
+[read-only demo](docs/demo.md),
+[dependency-upgrade runbook](docs/runbooks/dependency-upgrade.md), and
+[live admission procedures](security/policies/tests/README.md) for checks
+that require a real cluster.
+
 ## Quick start
 
 ### dev-kind (disposable, ~10 minutes)
@@ -312,20 +338,20 @@ It is not duplicated here.
 
 ### Prerequisites
 
-`kind`, `kubectl`, `helm`, the `flux` CLI, `sops`, `age` (`age-keygen`),
-`shellcheck`, `gitleaks`, `trivy`. home-k3s additionally needs SSH access
-to a supported Linux host.
+Runtime work uses `kind`, `kubectl`, `helm`, the `flux` CLI, `sops`, and `age`
+(`age-keygen`). Static repository verification has the separate prerequisites
+listed above. home-k3s additionally needs SSH access to a supported Linux host.
 
 ### Pinned versions
 
 ```
 K3s (home-k3s):          v1.36.3+k3s1
 Kubernetes (kind node):  v1.36.1, by tag AND digest
-Flux:                    v2.9.4
+Flux:                    v2.9.5
 Cilium:                  1.20.0
-Kyverno:                 v1.18.2 (chart 3.8.2)
+Kyverno:                 v1.19.1 (chart 3.9.1)
 cert-manager:             v1.21.1
-kube-prometheus-stack:   88.5.0
+kube-prometheus-stack:   88.6.5
 Authentik:               2026.8.0
 PostgreSQL:               17-alpine
 ```
