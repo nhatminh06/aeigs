@@ -7,4 +7,4 @@ creation_rules:
   # `grafana-oidc.enc.yaml`.
   - path_regex: (^|/)[a-z0-9-]+\.enc\.yaml$
     encrypted_regex: ^(data|stringData)$
-    age: age1gfycq3cyvq29hwkluywkhyc6rpt9y257u9ltltea769khtkysawslec0vw
+    age: age1wp3ddrp7tj36gvutrxaj42q8azjfxg7dda8g0cxm0n3njyxaeaaqv3vu4k

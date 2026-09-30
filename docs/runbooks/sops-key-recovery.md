@@ -2,18 +2,26 @@
 
 ## Incident status
 
-Fresh `dev-kind` reconstruction reached healthy Cilium, but Flux bootstrap
-stopped because the age identity expected at
-`~/.config/sops/age/keys.txt` was unavailable. The committed recipient is:
+The original age private key is permanently lost. On 2026-09-28 a new identity
+was deliberately established, with an independently protected second private-key
+copy confirmed by the operator. Git contains only its public recipient:
 
 ```text
-age1gfycq3cyvq29hwkluywkhyc6rpt9y257u9ltltea769khtkysawslec0vw
+age1wp3ddrp7tj36gvutrxaj42q8azjfxg7dda8g0cxm0n3njyxaeaaqv3vu4k
 ```
 
-The original private key has not been recovered. No replacement identity has
-been generated, no encrypted manifest has been changed, and recovery remains
-blocked. A random new age identity cannot decrypt ciphertext encrypted to the
-recipient above.
+All 11 Git-managed encrypted manifests were recreated from fresh values; none of
+the lost ciphertext is required. Old passwords, OAuth secrets, bootstrap tokens,
+session state, and database history were intentionally abandoned. home-k3s must
+be treated as a fresh environment unless a verified historical database backup is
+later recovered.
+
+Local decryption and Flux SOPS decryption succeeded. A fresh dev-kind cluster
+reached healthy Cilium, Grafana, Authentik, and bundled PostgreSQL, and the
+replacement OIDC application/provider applied. Complete gateway and interactive
+Grafana OIDC validation remain blocked because the separate development CA is not
+available at its documented off-repository location. Do not create a replacement
+CA implicitly; restore it or explicitly authorize a separate trust-root reset.
 
 ## Safe original-key recovery
 
@@ -201,7 +209,7 @@ Changing only the Kubernetes Secret does not modify a role in an initialized
 database. Changing only the role breaks Authentik when it next connects.
 Neither rotation can run until its database state is accessible.
 
-### Authority matrix
+### Phase 5C authority matrix (historical)
 
 `READY` means the old plaintext is unnecessary and a legitimate generation or
 rotation authority plus verification procedure is known. It does not authorize
@@ -223,7 +231,7 @@ configuration dependency is unavailable.
 | home Authentik PostgreSQL password | No with database-admin access | Yes | Live or verified-restored `authentik` database role | No | Yes | BLOCKED |
 | stateful-lab PostgreSQL password | No with database-admin access | Yes | Live or verified-restored `aegis` database role | No | Yes | BLOCKED |
 
-### Current authority availability
+### Authority availability recorded during Phase 5C
 
 - `~/.kube/config` exists but contains no contexts; the expected
   `~/.kube/home-k3s.yaml` is absent.
@@ -239,7 +247,7 @@ but no authoritative plaintext and no complete unencrypted blueprint. If Git
 history ever reveals actual credentials, stop and treat that as a historical
 secret leak rather than using it as recovery material.
 
-### Gates before secret rotation
+### Phase 5D gates recorded before authorization (historical)
 
 Phase 5D must not begin until all of these are satisfied:
 
@@ -263,5 +271,15 @@ Phase 5D must not begin until all of these are satisfied:
   Grafana OAuth records, and database credential records. Report existence and
   public metadata only until a later phase authorizes secret handling.
 
-Until these gates are met, the outcome remains **blocked** and no replacement
-SOPS identity or credential should be generated.
+The operator subsequently authorized deliberate abandonment of the old secret and
+database state, generated the replacement identity plus protected backup, and
+approved reviewed replacement OIDC designs. Those decisions satisfied the
+generation-authority gates above; the matrix is retained as incident history,
+not as the current recovery status.
+
+### Phase 5E development CA reset (2026-09-28)
+
+The old development CA was permanently lost. A replacement CA was intentionally
+generated with `scripts/bootstrap-pki.sh --init`, and an independent protected
+backup is confirmed. Trusted HTTPS validation passed, and the real Grafana →
+Authentik → Grafana browser login succeeded.
