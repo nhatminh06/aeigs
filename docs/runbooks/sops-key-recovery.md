@@ -276,3 +276,10 @@ database state, generated the replacement identity plus protected backup, and
 approved reviewed replacement OIDC designs. Those decisions satisfied the
 generation-authority gates above; the matrix is retained as incident history,
 not as the current recovery status.
+
+### Phase 5E development CA reset (2026-09-28)
+
+The old development CA was permanently lost. A replacement CA was intentionally
+generated with `scripts/bootstrap-pki.sh --init`, and an independent protected
+backup is confirmed. Trusted HTTPS validation passed, and the real Grafana →
+Authentik → Grafana browser login succeeded.

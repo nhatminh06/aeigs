@@ -348,7 +348,13 @@ steps, no secrets shown — is in [`docs/demo.md`](docs/demo.md).
 - No MFA / identity federation
 - nginx does not auto-reload on certificate rotation — accepted, documented manual step ([runbook](docs/runbooks/home-k3s-nginx-cert-reload.md))
 - No egress NetworkPolicy — evaluated, deferred (no Hubble relay on home-k3s to build a confident traffic inventory)
-- **SOPS identity reset**: the original private key and ciphertext were abandoned; all 11 Git-managed secrets now use the replacement recipient, whose private key has an operator-confirmed independent protected copy. The separate development CA is still unavailable, so fresh dev ingress and browser OIDC validation remain blocked; see the [recovery runbook](docs/runbooks/sops-key-recovery.md).
+- **SOPS identity and development CA reset**: the original SOPS private key,
+  ciphertext, and development CA were abandoned. All 11 Git-managed secrets use
+  the replacement SOPS recipient. A replacement development CA intentionally
+  reissued the dev-kind certificates, trusted HTTPS passed, and the real
+  Grafana → Authentik → Grafana OIDC flow established an authenticated session.
+  An independent protected CA backup is confirmed; see the
+  [recovery runbook](docs/runbooks/sops-key-recovery.md).
 - Cross-minor K3s version change is untested (only a same-minor patch cycle has been proven live)
 - External dependencies: GitHub, GHCR, Sigstore (Fulcio/Rekor) must be reachable for full supply-chain verification
 
