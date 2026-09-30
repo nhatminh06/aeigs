@@ -56,6 +56,12 @@ state, policy result, or a relevant application-level result.
 
 ### Repository and static validation
 
+Run `./scripts/verify-repo.sh` for the canonical local implementation of the
+static checks below. CI invokes the same script stages while retaining
+separate jobs and checksum-verified tool installation. Trivy is the explicit
+exception when no local binary is installed: the verifier reports it skipped,
+and the pinned CI Trivy action remains required.
+
 The `repo-security` workflow currently enforces:
 
 - Gitleaks committed-secret scanning;

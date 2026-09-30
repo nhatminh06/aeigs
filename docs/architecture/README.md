@@ -27,7 +27,7 @@ companion — keep both updated together as the platform changes.
      | scripts/bootstrap-flux.sh                |
      |   applies committed flux-system/         |
      v                                          |
-  Flux v2.9.4 controllers  ------ GitRepository/flux-system
+  Flux v2.9.5 controllers  ------ GitRepository/flux-system
      |                                   |
      |                                   v
      |                        Kustomization/flux-system (root, 1m)

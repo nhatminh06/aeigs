@@ -93,6 +93,9 @@ must match reality — see "Status honesty" below.
 - Prefer reproducibility over convenience: if a step can't be re-run from
   Git plus documented bootstrap commands, that's a gap to close, not a
   shortcut to take.
+- Run `scripts/verify-repo.sh` before submitting repository changes. It is
+  the canonical static validation entrypoint shared with CI; live cluster
+  experiments remain separate and follow their component runbooks.
 
 ### Status honesty
 
