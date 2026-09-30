@@ -81,7 +81,7 @@ jobs:
         run: |
           curl -sSL -o kubectl \
             "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
-          echo "629d3f410e09bf49b64ae7079f7f0bda1191efed311f7d37fdbab0ad5b0ec2b7  kubectl" | sha256sum -c -
+          echo "33bc88a24c3b09cf55bfd59e6ca977881b61fc3f25ab65bc80c65b430248648e  kubectl" | sha256sum -c -
           chmod +x kubectl
       - name: Install kubeconform and Flux schemas
         run: |
