@@ -65,7 +65,7 @@ jobs:
     env:
       # Renovate updates CLI versions only. Their unchanged checksums make CI
       # fail until a reviewer verifies and records each new published SHA-256.
-      KUBECTL_VERSION: 1.36.1
+      KUBECTL_VERSION: 1.36.5
       KUBECONFORM_VERSION: 0.8.0
       FLUX_VERSION: 2.9.5
       KUBERNETES_SCHEMA_COMMIT: a6f9a32d2ccb64b6e4f5b41419b9c2e8ee0cce18
