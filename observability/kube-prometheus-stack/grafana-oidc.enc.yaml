@@ -3,23 +3,20 @@ kind: Secret
 metadata:
     name: grafana-oidc
     namespace: observability
-    # client-secret here must match the client_secret set on the
-    # "grafana" provider in security/authentik/blueprint.enc.yaml.
-    # Rotating one without the other breaks the OIDC login.
 stringData:
-    client-secret: ENC[AES256_GCM,data:I+NU4lZvNTjmhnuI3WhDkZV0Dxb5AXVoCAxdG1zAPcBWT8oosVhGa9bl7uQbkM/b,iv:3XUpOf4S5pjHM9A/RTq+CEmM3q4zpvn1XLmOiynoPX8=,tag:1C45UwczOTCtXNXtbxDgcw==,type:str]
+    client-secret: ENC[AES256_GCM,data:lyVwhJv+GoAaKIVbNA2KyE2sZGdT8/oGqoYKH6p7AZi68/gX3NjzSRqWf0WJQ5HrbAzQ9xSrixtpJUqsKPudOg==,iv:wWtE4QhELgFx0cfmzq3xquIWc/COGoZCWDObWp6+t8k=,tag:kcsT0XGIMu6kIHWLFTRpdw==,type:str]
 sops:
     age:
         - enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBQSmFnV3FTQ0o5REVXRlY2
-            UDFGNWF1YlJ6TTNmazMrNklFVmJLSlEvMFg4CmI4M3ZUZ1ZKTHJ3bGVjZjd0TDBx
-            QWxOMWk1bmZ4QVBIaWN3aEM2a2RGUFEKLS0tIHZJV0doOG9iRmN4emVXUmJPMUZr
-            RGZNVDlDeUV5Yy9ndlE3RTJ3WmNqRkkKYi6bSk2+veYMFCCEMmOpJtp6QHQeMrk3
-            9dwQkx9W0I3rMD9FmN7p5FW6pbJIAFVXpTEg0FWJTux3Ln2sBzMbMg==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBGaGtwaWNOY0IrVHR2ZExr
+            bHFvd2grYTN0RHZaTTdTUHNybklhZ21XMlE4Cko0K2VyOFp0R3NjRmdjaEFzM0pj
+            MmpPbmRvejNyV0NmZmsrUW9hN1BIdk0KLS0tIFQ4SjRuVGJ2RXRqcEV4QUNLN0li
+            eVRHSWxIYVNFR256YWp0WEwwbnhFdWMKFNP5OyN+AjDVQCe1Ps65TQKGscRx0I/U
+            ITzEoMiNxrcEjZanb4n4J6UcG85SNG46kDBwjfEtdZxQcfL3EliU4g==
             -----END AGE ENCRYPTED FILE-----
-          recipient: age1gfycq3cyvq29hwkluywkhyc6rpt9y257u9ltltea769khtkysawslec0vw
+          recipient: age1wp3ddrp7tj36gvutrxaj42q8azjfxg7dda8g0cxm0n3njyxaeaaqv3vu4k
     encrypted_regex: ^(data|stringData)$
-    lastmodified: "2026-08-14T03:59:25Z"
-    mac: ENC[AES256_GCM,data:isGI+AZQczPmxiSJIfiEeO+NR6+zisVHolqhifh8V3fxRqp+pfyUl0df4bCZarqbKuLNBYmbsuQhvEIDMlFSK6vCFgyhTjsLFGUqstW/nZWrRGQgYlGflBa94FiwMPZQHKQxVamNonLr1TqQvU9DZiyR4namF1Gdxt34Ycnatxo=,iv:6VCeJih1v9UkH6CbbBmMTPTB58XdCmUEg7E6Rs/5xUU=,tag:vNMraxD6sq1MendumvlBBg==,type:str]
+    lastmodified: "2026-09-28T18:29:10Z"
+    mac: ENC[AES256_GCM,data:gWceXu0Htp/1G/xkp4uQFA8+1/xi7q9deoOCUarSY+O8UxfzK4LSAPJmz8ns9pyJgi171M3TUoM4Vgkfp1OkfxIjOfuDD2dTXpGj5rJlSDHz6dxlsilnGqA0nWu+kfJzdAHRs3/9gE7Ax0W1Mk7Vwd/8CbOQcy8n5Q02iX/EUD0=,iv:/2i6y/RhH/g4Ml8NfGt5tzVQG9wJXIaXp6fAoDj3zhw=,tag:HKttgZmaihTRQGKdxsSwFg==,type:str]
     version: 3.13.3
