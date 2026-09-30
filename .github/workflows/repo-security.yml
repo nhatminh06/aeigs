@@ -67,7 +67,7 @@ jobs:
       # fail until a reviewer verifies and records each new published SHA-256.
       KUBECTL_VERSION: 1.36.1
       KUBECONFORM_VERSION: 0.8.0
-      FLUX_VERSION: 2.9.4
+      FLUX_VERSION: 2.9.5
       KUBERNETES_SCHEMA_COMMIT: a6f9a32d2ccb64b6e4f5b41419b9c2e8ee0cce18
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -92,7 +92,7 @@ jobs:
 
           curl -sSL -o flux-crd-schemas.tar.gz \
             "https://github.com/fluxcd/flux2/releases/download/v${FLUX_VERSION}/crd-schemas.tar.gz"
-          echo "a69559b63275a1883696548e286aec7ae937ee0bdb86758900bbc20512dac37e  flux-crd-schemas.tar.gz" | sha256sum -c -
+          echo "3c6c976df251e5a7e8c1c6a0ee63e6c28026d568b14ffa2f13cc32a6a564f238  flux-crd-schemas.tar.gz" | sha256sum -c -
           mkdir flux-crd-schemas
           tar -xzf flux-crd-schemas.tar.gz -C flux-crd-schemas
       # Catches a broken GitOps composition (missing resource, bad path,
