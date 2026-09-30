@@ -161,6 +161,9 @@ verify_renovate() {
 verify_hygiene() {
   require_tool git git
   git diff --check
+  if [ -n "${VERIFY_DIFF_BASE:-}" ]; then
+    git diff --check "${VERIFY_DIFF_BASE}...HEAD"
+  fi
 }
 
 run_full() {
