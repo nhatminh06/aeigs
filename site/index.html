@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aegis — GitOps under failure</title>
+  <meta name="description" content="A security-focused GitOps platform that proves controls by breaking, observing, recovering, and measuring real Kubernetes systems.">
+  <meta name="theme-color" content="#0b1020">
+  <meta property="og:title" content="Aegis — GitOps under failure">
+  <meta property="og:description" content="Build → Secure → Observe → Break → Recover → Prove">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://nhatminh06.github.io/aeigs/">
+  <meta property="og:image" content="https://raw.githubusercontent.com/nhatminh06/aeigs/main/docs/architecture/architecture.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="shell nav-wrap">
+      <a class="brand" href="#top" aria-label="Aegis home">
+        <span class="brand-mark" aria-hidden="true">A</span>
+        <span>Aegis</span>
+      </a>
+      <nav class="nav" aria-label="Primary navigation">
+        <a href="#proof">Proof</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#demo">Demo</a>
+        <a href="https://github.com/nhatminh06/aeigs">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="shell hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Security-focused Kubernetes · GitOps · Reliability</p>
+          <h1>GitOps you can<br><span>break on purpose.</span></h1>
+          <p class="lede">Aegis is a two-environment Kubernetes platform built around one idea: a control is not real until it survives a real failure.</p>
+          <div class="hero-actions">
+            <a class="button primary" href="#proof">See the evidence</a>
+            <a class="button secondary" href="https://github.com/nhatminh06/aeigs/blob/main/docs/demo.md">5–10 min demo</a>
+          </div>
+          <p class="loop">Build <b>→</b> Secure <b>→</b> Observe <b>→</b> Break <b>→</b> Recover <b>→</b> Prove</p>
+        </div>
+
+        <aside class="hero-panel" aria-label="Project highlights">
+          <div class="terminal-head"><span></span><span></span><span></span><em>evidence.log</em></div>
+          <pre><code>$ flux get kustomizations
+READY  True
+
+$ kyverno test security/policies/tests
+Test Summary: 20 passed, 0 failed
+
+$ signed-bad-release
+p95: 4.75ms → 237ms
+DETECTED: ~1m59s
+RECOVERED: ~3m45s
+
+$ restore identity
+UUID: preserved
+STATUS: PROVEN</code></pre>
+        </aside>
+      </div>
+    </section>
+
+    <section class="metrics" aria-label="Key metrics">
+      <div class="shell metric-grid">
+        <article><strong>2</strong><span>Kubernetes environments</span></article>
+        <article><strong>20/20</strong><span>Kyverno policy tests</span></article>
+        <article><strong>~1m59s</strong><span>bad-release detection</span></article>
+        <article><strong>~3m45s</strong><span>Git-managed recovery</span></article>
+      </div>
+    </section>
+
+    <section class="section" id="proof">
+      <div class="shell">
+        <div class="section-heading">
+          <p class="eyebrow">Proof, not configuration</p>
+          <h2>Failure experiments with real outcomes.</h2>
+          <p>Every headline claim below maps to commands, logs, runbooks, or preserved incident evidence in the repository.</p>
+        </div>
+
+        <div class="card-grid">
+          <article class="proof-card">
+            <div class="card-index">01</div>
+            <h3>Unsigned image denied</h3>
+            <p>A real unsigned application digest was selected and rejected by Kyverno signature verification at admission.</p>
+            <a href="https://github.com/nhatminh06/aeigs/tree/main/security-lab/unsigned-image">Inspect the lab →</a>
+          </article>
+
+          <article class="proof-card">
+            <div class="card-index">02</div>
+            <h3>Lateral movement blocked</h3>
+            <p>Hubble showed traffic flip from allowed to denied after NetworkPolicy isolated Authentik's PostgreSQL path.</p>
+            <a href="https://github.com/nhatminh06/aeigs/tree/main/security-lab/network-lateral-movement">Inspect the lab →</a>
+          </article>
+
+          <article class="proof-card accent">
+            <div class="card-index">03</div>
+            <h3>Trusted release, bad behavior</h3>
+            <p>A signed and admitted release carried a real latency regression. Prometheus caught what provenance controls correctly could not.</p>
+            <a href="https://github.com/nhatminh06/aeigs/blob/main/docs/runbooks/aegis-api-bad-release.md">Read the incident →</a>
+          </article>
+
+          <article class="proof-card">
+            <div class="card-index">04</div>
+            <h3>Database destroyed, identity restored</h3>
+            <p>After deleting Authentik's backing PVC/PV, Git rebuilt infrastructure and an encrypted backup restored the same test identity UUID.</p>
+            <a href="https://github.com/nhatminh06/aeigs/blob/main/docs/runbooks/home-k3s-authentik.md#destructive-identity-recovery">Read the recovery →</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section architecture-section" id="architecture">
+      <div class="shell">
+        <div class="section-heading split-heading">
+          <div>
+            <p class="eyebrow">Architecture</p>
+            <h2>One operating model.<br>Two environments.</h2>
+          </div>
+          <p>Disposable <b>dev-kind</b> is optimized for experiments. Persistent <b>home-k3s</b> exists to prove host lifecycle, data recovery, and reconstruction.</p>
+        </div>
+
+        <div class="architecture-frame">
+          <img src="architecture.png" alt="Aegis architecture diagram showing GitOps, supply chain, security, identity, observability, and two Kubernetes environments">
+        </div>
+
+        <div class="stack-strip" aria-label="Technology stack">
+          <span>Flux 2.9.5</span>
+          <span>Cilium 1.20.0</span>
+          <span>Kyverno 1.19.1</span>
+          <span>SOPS + age</span>
+          <span>cert-manager</span>
+          <span>Authentik</span>
+          <span>Prometheus</span>
+          <span>Grafana 13.2</span>
+          <span>Cosign</span>
+          <span>Trivy</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="demo">
+      <div class="shell demo-grid">
+        <div class="section-heading sticky-heading">
+          <p class="eyebrow">Interview demo</p>
+          <h2>Show the system in five minutes.</h2>
+          <p>The live cluster stays private. The public site shows the evidence; the interview walkthrough demonstrates the controls read-only.</p>
+          <a class="text-link" href="https://github.com/nhatminh06/aeigs/blob/main/docs/demo.md">Open the full demo guide →</a>
+        </div>
+
+        <ol class="timeline">
+          <li>
+            <span>01</span>
+            <div><h3>Flux health</h3><p>Show the same Git revision reconciled through the platform.</p><code>flux get kustomizations</code></div>
+          </li>
+          <li>
+            <span>02</span>
+            <div><h3>Trusted HTTPS + Grafana</h3><p>Open the observability stack and show application SLO data.</p><code>curl --cacert ... /healthz</code></div>
+          </li>
+          <li>
+            <span>03</span>
+            <div><h3>Authentik OIDC</h3><p>Complete a real Grafana → Authentik → Grafana login.</p><code>OIDC: interactive proof</code></div>
+          </li>
+          <li>
+            <span>04</span>
+            <div><h3>Admission control</h3><p>Show a trusted image accepted and an invalid workload denied.</p><code>kubectl apply --dry-run=server</code></div>
+          </li>
+          <li>
+            <span>05</span>
+            <div><h3>Failure stories</h3><p>Finish with the signed-but-bad release and destructive identity restore.</p><code>break → recover → prove</code></div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section closing">
+      <div class="shell closing-panel">
+        <p class="eyebrow">The engineering point</p>
+        <h2>Security controls establish trust.<br>Observability establishes correctness.<br>Recovery establishes resilience.</h2>
+        <p>Aegis deliberately tests all three.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="https://github.com/nhatminh06/aeigs">View the repository</a>
+          <a class="button secondary" href="https://github.com/nhatminh06/aeigs/blob/main/docs/portfolio.md">Interview stories</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-row">
+      <span>Aegis · GitOps under failure</span>
+      <a href="https://github.com/nhatminh06">github.com/nhatminh06</a>
+    </div>
+  </footer>
+</body>
+</html>

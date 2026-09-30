@@ -9,6 +9,16 @@ network movement, a signed-but-broken release, database destruction, host
 reboot, a Kubernetes version change — each proven with real commands and
 real output, not asserted from configuration alone.
 
+<p align="center">
+  <a href="https://nhatminh06.github.io/aeigs/"><strong>Live showcase</strong></a>
+  ·
+  <a href="docs/demo.md">5–10 minute demo</a>
+  ·
+  <a href="docs/portfolio.md">Interview stories</a>
+</p>
+
+> **At a glance:** 2 Kubernetes environments · 20/20 Kyverno policy tests · signed-but-bad release detected in ~1m59s · Git-managed recovery in ~3m45s · destructive PostgreSQL/identity recovery proven.
+
 ## Why Aegis
 
 Most homelab/portfolio Kubernetes projects stop at "I installed these
